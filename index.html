@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3D Chess Puzzles</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r80/three.min.js"></script>
+  <script src="papaparse.min.js"></script>
+  <script src="chessboard3.min.js"></script>
+  <script src="OrbitControls.js"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #controls {
+      margin: 1em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    label, select, button {
+      font-size: 1em;
+      margin: 0.5em;
+    }
+
+    #board {
+      width: 100%;
+      max-width: 600px;
+      height: 600px;
+    }
+
+    #info {
+      margin-top: 1em;
+      font-size: 1.1em;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      #board {
+        height: 400px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>3D Chess Puzzles</h2>
+
+
+  <div id="controls">
+    <label for="ratingSelect">Select Rating Range:</label>
+    <select id="ratingSelect">
+      <option value="all">All</option>
+    </select>
+    <button id="nextPuzzle">Next Puzzle</button>
+    <button id="showSolution" disabled>Show Solution</button>
+  </div>
+  <div id="board"></div>
+  <div id="info" style="margin-top: 1em; font-size: 1.2em;"></div>
+  <!-- Container for moves (make sure this is inside the body, not outside) -->
+<div id="solution" style="margin-top: 1em; font-size: 1.2em; white-space: pre-wrap;"></div>
+
+
+  
+
+  <script>
+    let puzzles = [];
+    let filtered = [];
+    let current = null;
+    let board;
+
+    Papa.parse("filtered_puzzles.csv", {
+      download: true,
+      header: true,
+      complete: function(results) {
+        puzzles = results.data.filter(row => row.FEN && row.Moves);
+        populateRatingOptions();
+        loadRandomPuzzle();
+      }
+    });
+
+    function populateRatingOptions() {
+      const select = document.getElementById("ratingSelect");
+      const ratings = new Set();
+
+      puzzles.forEach(p => {
+        const r = Math.floor(+p.Rating / 100) * 100;
+        if (r >= 1000 && r < 2500) ratings.add(r);
+      });
+
+      Array.from(ratings).sort((a, b) => a - b).forEach(r => {
+        const option = document.createElement("option");
+        option.value = r;
+        option.text = `${r}–${r+99}`;
+        select.appendChild(option);
+      });
+
+      select.addEventListener("change", () => loadRandomPuzzle());
+    }
+
+    function loadRandomPuzzle() {
+      const ratingRange = document.getElementById("ratingSelect").value;
+
+      filtered = (ratingRange === "all") ? puzzles :
+        puzzles.filter(p => {
+          const r = Math.floor(+p.Rating / 100) * 100;
+          return r == ratingRange;
+        });
+
+      if (!filtered.length) return alert("No puzzles found for this rating.");
+
+      current = filtered[Math.floor(Math.random() * filtered.length)];
+      showPuzzle(current);
+    }
+
+    // Function to display the moves as text
+    function showPuzzle(puzzle) {
+  if (board) board.destroy();
+
+     // Display the opponent's first move before the puzzle starts
+     const firstMove = puzzle.Moves.split(" ")[0]; // Get the opponent's first move
+      const firstMoveText = `Opponent's first move: ${firstMove.slice(0, 2)} to ${firstMove.slice(2)}`;
+
+      // Display this first move
+      const solutionDiv = document.getElementById("solution");
+      solutionDiv.innerHTML = firstMoveText;
+
+
+
+    board = ChessBoard3("board", {
+        position: puzzle.FEN,
+        pieceStyle: "chesspieces/wikipedia",
+        draggable: false
+    });
+
+
+
+  // Enable the "Show Solution" button
+  document.getElementById("showSolution").disabled = false;
+
+  // Show puzzle info (rating & whose turn)
+  const turn = puzzle.FEN.split(" ")[1] === "w" ? "White" : "Black";
+  document.getElementById("info").innerText =
+    `Rating: ${puzzle.Rating} | Turn: ${turn}`;
+
+  // Function to show solution when the button is clicked
+  document.getElementById("showSolution").onclick = function () {
+    showSolution(puzzle.Moves);
+  };
+}
+
+
+/*
+// Function to display the moves as text
+function showPuzzle(puzzle) {
+  if (board) board.destroy();
+
+  // Display the opponent's first move before the puzzle starts
+  const firstMove = puzzle.Moves.split(" ")[0]; // Get the opponent's first move
+  const firstMoveText = `Opponent's first move: ${firstMove.slice(0, 2)} to ${firstMove.slice(2)}`;
+
+  // Display this first move
+  const solutionDiv = document.getElementById("solution");
+  solutionDiv.innerHTML = firstMoveText;
+
+  // Initialize the chessboard
+  board = ChessBoard3("board", {
+    position: puzzle.FEN,
+    pieceStyle: "chesspieces/wikipedia",
+    draggable: true, // Enable piece draggability
+  });
+
+  // Wait for the board to initialize
+  setTimeout(() => {
+    // Get the Three.js scene and camera from the chessboard
+    const scene = board.scene;
+    const camera = board.camera;
+    
+    // Ensure the board's renderer is available
+    const rendererDomElement = board.renderer.domElement;
+    if (!rendererDomElement) {
+      console.error("Renderer DOM element not found.");
+      return;
+    }
+
+    // Initialize OrbitControls
+    const controls = new THREE.OrbitControls(camera, rendererDomElement);  // Add orbit controls
+
+    // Randomize the camera's initial angle for a unique view
+    const randomAngleX = Math.random() * 90 - 45; // Randomize angle between -45 and 45 degrees
+    const randomAngleY = Math.random() * 90 - 45; // Randomize angle between -45 and 45 degrees
+
+    camera.position.set(
+      10 * Math.cos(THREE.MathUtils.degToRad(randomAngleX)),
+      10,
+      10 * Math.sin(THREE.MathUtils.degToRad(randomAngleX))
+    );
+    camera.lookAt(0, 0, 0); // Make sure it looks at the center of the board
+
+    // Update the controls with new camera position
+    controls.update();
+
+    // Optional: set the zoom and controls to be smoother
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.25;
+    controls.screenSpacePanning = false;
+  }, 0); // Delay execution to ensure the board is fully loaded
+}
+
+*/
+
+    // Function to display the rest of the solution when clicked
+    function showSolution(movesString) {
+      const moves = movesString.split(" ").slice(1); // Skip the first move (opponent's move)
+      const movesText = moves.map((move, index) => {
+        const from = move.slice(0, 2); // First two characters: from square
+        const to = move.slice(2); // Last two characters: to square
+        return `Move ${index + 1}: From ${from} to ${to}`;
+      }).join(" | "); // Display all moves in one line
+
+      const solutionDiv = document.getElementById("solution");
+      solutionDiv.innerHTML += `<br><br>Solution: ${movesText}`;
+    }
+
+
+
+    document.getElementById("nextPuzzle").addEventListener("click", loadRandomPuzzle);
+  </script>
+</body>
+</html>
