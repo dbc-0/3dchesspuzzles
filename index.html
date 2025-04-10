@@ -13,6 +13,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 
   <style>
+
+    
     html, body {
       margin: 0;
       padding: 0;
@@ -59,6 +61,8 @@
       margin: 0.5em;
       text-align: center;
     }
+
+  
 
     @media (max-width: 600px) {
       #board {
@@ -149,46 +153,64 @@
       showPuzzle(current);
     }
 
-    function showPuzzle(puzzle) {
+
+
+  // Function to display the puzzle 
+  function showPuzzle(puzzle) {
     if (board) board.destroy();
+   
 
     const movesArr = puzzle.Moves.split(" ");
     const firstMove = movesArr[0];
     const fromSquare = firstMove.slice(0,2);
     const toSquare = firstMove.slice(2,4);
 
-    // Initialize chess.js with the puzzle's FEN
     let chessInstance = new Chess(puzzle.FEN);
     let firstMoveText = "";
 
-    if (document.getElementById("includeFirstMove").checked) {
-      // Apply the first move and get its algebraic notation
-      const moveObj = chessInstance.move({ from: fromSquare, to: toSquare });
-      firstMoveText = `Opponent's first move: ${moveObj.san}`;
-    } else {
-      // If not applying, fallback to UCI concatenation (or you could display nothing)
-      firstMoveText = `Opponent's first move: ${fromSquare}${toSquare}`;
-    }
-
-    // Use the updated FEN (after the move, if applied)
-    let startingFen = chessInstance.fen();
-
-    // Display the opponent's first move in algebraic notation
-    document.getElementById("solution").innerHTML = firstMoveText;
-
-    // Initialize the board using the (possibly) updated FEN
+    // Get the updated FEN after applying the move (if applied)
+    const startingFen = chessInstance.fen();
     board = ChessBoard3("board", {
       position: startingFen,
       pieceStyle: "chesspieces/wikipedia",
       draggable: false
     });
 
-    // Enable the "Show Solution" button and update info text
+
+    if (document.getElementById("includeFirstMove").checked) {
+      
+
+      
+      var moveObj = chessInstance.move({ from: fromSquare, to: toSquare });
+      firstMoveText = `Opponent's first move: ${moveObj.san}`;
+        //wait 1s
+        setTimeout(() => {
+            // Update the board position after the move
+            board.position(chessInstance.fen());
+            
+        }, 1000);
+        
+    } else {
+        var moveObj = chessInstance.move({ from: fromSquare, to: toSquare });
+        firstMoveText = `Opponent's first move: ${moveObj.san}`;
+      //firstMoveText = `Opponent's first move: ${fromSquare}${toSquare}`;
+     
+    } 
+
+    // Display the opponent's first move
+    document.getElementById("solution").innerHTML = firstMoveText;
+
+    
+
+  
+
+   
+
+    // Enable solution button and update info text
     document.getElementById("showSolution").disabled = false;
     const turn = puzzle.FEN.split(" ")[1] === "w" ? "White" : "Black";
-    document.getElementById("info").innerText = `Rating: ${puzzle.Rating} | Turn: ${turn}`;
+    document.getElementById("info").innerText = `Rating: ${puzzle.Rating}`;
 
-    // Update the solution button's onclick to use the updated showSolution function
     document.getElementById("showSolution").onclick = function () {
       showSolution(puzzle);
     };
@@ -196,31 +218,52 @@
     stopTimer();
     startTimer();
   }
-
   // Function to display the rest of the solution when clicked
   function showSolution(puzzle) {
-    // Reinitialize chess.js so we can replay the moves
-    let chessInstance = new Chess(puzzle.FEN);
-    const movesArr = puzzle.Moves.split(" ");
-
-    // Apply opponent's first move if the checkbox is checked
-    if (document.getElementById("includeFirstMove").checked) {
-      chessInstance.move({ from: movesArr[0].slice(0,2), to: movesArr[0].slice(2,4) });
-    }
-
-    // Process remaining moves and convert to algebraic notation
-    const remainingMoves = movesArr.slice(1);
-    const algebraicMoves = remainingMoves.map(move => {
-      const moveObj = chessInstance.move({ from: move.slice(0,2), to: move.slice(2,4) });
-      return moveObj ? moveObj.san : move;
+  // Reinitialize chess.js so we can replay the moves
+  let chessInstance = new Chess(puzzle.FEN);
+  const movesArr = puzzle.Moves.split(" ");
+  
+  // If the checkbox is checked, apply opponent's first move and wait 1s
+  let delay = 0;
+  //if (document.getElementById("includeFirstMove").checked) {
+    chessInstance.move({
+      from: movesArr[0].slice(0,2),
+      to: movesArr[0].slice(2,4)
     });
+    // Update board immediately if not already updated
+    board.position(chessInstance.fen());
+    delay = 1;
+  //}
+  
+  // Process the remaining moves one-by-one with a delay
+  const remainingMoves = movesArr.slice(1);
+  const solutionDiv = document.getElementById("solution");
 
-    // Append the solution moves to the solution container
-    const solutionDiv = document.getElementById("solution");
-    solutionDiv.innerHTML += `<br><br>Solution: ${algebraicMoves.join(" ")}`;
+  // Optionally, build an array of algebraic moves to display later.
+  const algebraicMoves = [];
+  
+  remainingMoves.forEach((move, index) => {
+    setTimeout(() => {
+      const moveObj = chessInstance.move({
+        from: move.slice(0,2),
+        to: move.slice(2,4)
+      });
+      // Update the board position after the move
+      board.position(chessInstance.fen());
+      
+      // Collect the move's algebraic notation (if available)
+      algebraicMoves.push(moveObj ? moveObj.san : move);
+      
+      // Optionally update the solution text on the fly
+      solutionDiv.innerHTML = `<br><br>Solution: ${algebraicMoves.join(" ")}`;
+    }, 1000 * (index + delay));
+  });
+  
+  // Stop the timer after all moves have been animated
+  setTimeout(stopTimer, 1000 * (remainingMoves.length + delay));
+}
 
-    stopTimer();
-  }
 
     function startTimer() {
       timerStart = Date.now();
