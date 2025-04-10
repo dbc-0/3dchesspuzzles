@@ -9,46 +9,60 @@
   <script src="papaparse.min.js"></script>
   <script src="chessboard3.min.js"></script>
   <script src="OrbitControls.js"></script>
+  <!-- Include chess.js to help update FEN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 
   <style>
-    body {
-      font-family: sans-serif;
+    html, body {
       margin: 0;
       padding: 0;
+      height: 100%;
+      overflow: hidden; /* Prevent scrolling */
       background: #111;
       color: #fff;
+      font-family: sans-serif;
+    }
+
+    body {
       display: flex;
       flex-direction: column;
       align-items: center;
     }
 
+    /* Controls arranged in a row with wrapping and spacing */
     #controls {
-      margin: 1em;
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
       align-items: center;
+      justify-content: center;
+      gap: 1em;
+      padding: 1em;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     label, select, button {
       font-size: 1em;
-      margin: 0.5em;
+      margin: 0;
     }
 
+    /* Adjust board to take remaining vertical space */
     #board {
       width: 100%;
-      max-width: 600px;
-      height: 600px;
+      max-width: 900px;
+      /* Subtract height of controls and other elements (approx. 200px here, adjust if needed) */
+      height: calc(100vh - 200px);
+      box-sizing: border-box;
     }
 
-    #info {
-      margin-top: 1em;
-      font-size: 1.1em;
+    #timer, #average-time, #info {
+      margin: 0.5em;
       text-align: center;
     }
 
     @media (max-width: 600px) {
       #board {
-        height: 400px;
+        height: calc(100vh - 220px);
       }
     }
   </style>
@@ -56,28 +70,40 @@
 <body>
   <h2>3D Chess Puzzles</h2>
 
-
   <div id="controls">
     <label for="ratingSelect">Select Rating Range:</label>
     <select id="ratingSelect">
       <option value="all">All</option>
     </select>
+    <!-- Checkbox for opponent's first move -->
+    <label>
+      <input type="checkbox" id="includeFirstMove" checked>
+      Include Opponent's First Move
+    </label>
     <button id="nextPuzzle">Next Puzzle</button>
     <button id="showSolution" disabled>Show Solution</button>
+    <button id="reset-stats">Reset Stats</button>
   </div>
-  <div id="board"></div>
-  <div id="info" style="margin-top: 1em; font-size: 1.2em;"></div>
-  <!-- Container for moves (make sure this is inside the body, not outside) -->
-<div id="solution" style="margin-top: 1em; font-size: 1.2em; white-space: pre-wrap;"></div>
 
-
+  <div id="info-container" style="display: flex; align-items: center; gap: 1em;">
+    <div id="timer">Time: 0s</div>
+    <div id="average-time">Average Solve Time: N/A</div>
+    <div id="info" style="font-size: 1.2em;"></div>
+  </div>
+  <div id="solution" style="margin: 1em; font-size: 1.2em; white-space: pre-wrap;"></div>
   
-
+  <div id="board"></div>
+  
+ 
   <script>
     let puzzles = [];
     let filtered = [];
     let current = null;
     let board;
+
+    let timerInterval = null;
+    let timerStart = null;
+    let completionTimes = []; // Stores times in seconds
 
     Papa.parse("filtered_puzzles.csv", {
       download: true,
@@ -123,118 +149,114 @@
       showPuzzle(current);
     }
 
-    // Function to display the moves as text
     function showPuzzle(puzzle) {
-  if (board) board.destroy();
+    if (board) board.destroy();
 
-     // Display the opponent's first move before the puzzle starts
-     const firstMove = puzzle.Moves.split(" ")[0]; // Get the opponent's first move
-      const firstMoveText = `Opponent's first move: ${firstMove.slice(0, 2)} to ${firstMove.slice(2)}`;
+    const movesArr = puzzle.Moves.split(" ");
+    const firstMove = movesArr[0];
+    const fromSquare = firstMove.slice(0,2);
+    const toSquare = firstMove.slice(2,4);
 
-      // Display this first move
-      const solutionDiv = document.getElementById("solution");
-      solutionDiv.innerHTML = firstMoveText;
+    // Initialize chess.js with the puzzle's FEN
+    let chessInstance = new Chess(puzzle.FEN);
+    let firstMoveText = "";
 
+    if (document.getElementById("includeFirstMove").checked) {
+      // Apply the first move and get its algebraic notation
+      const moveObj = chessInstance.move({ from: fromSquare, to: toSquare });
+      firstMoveText = `Opponent's first move: ${moveObj.san}`;
+    } else {
+      // If not applying, fallback to UCI concatenation (or you could display nothing)
+      firstMoveText = `Opponent's first move: ${fromSquare}${toSquare}`;
+    }
 
+    // Use the updated FEN (after the move, if applied)
+    let startingFen = chessInstance.fen();
 
+    // Display the opponent's first move in algebraic notation
+    document.getElementById("solution").innerHTML = firstMoveText;
+
+    // Initialize the board using the (possibly) updated FEN
     board = ChessBoard3("board", {
-        position: puzzle.FEN,
-        pieceStyle: "chesspieces/wikipedia",
-        draggable: false
+      position: startingFen,
+      pieceStyle: "chesspieces/wikipedia",
+      draggable: false
     });
 
+    // Enable the "Show Solution" button and update info text
+    document.getElementById("showSolution").disabled = false;
+    const turn = puzzle.FEN.split(" ")[1] === "w" ? "White" : "Black";
+    document.getElementById("info").innerText = `Rating: ${puzzle.Rating} | Turn: ${turn}`;
 
+    // Update the solution button's onclick to use the updated showSolution function
+    document.getElementById("showSolution").onclick = function () {
+      showSolution(puzzle);
+    };
 
-  // Enable the "Show Solution" button
-  document.getElementById("showSolution").disabled = false;
+    stopTimer();
+    startTimer();
+  }
 
-  // Show puzzle info (rating & whose turn)
-  const turn = puzzle.FEN.split(" ")[1] === "w" ? "White" : "Black";
-  document.getElementById("info").innerText =
-    `Rating: ${puzzle.Rating} | Turn: ${turn}`;
+  // Function to display the rest of the solution when clicked
+  function showSolution(puzzle) {
+    // Reinitialize chess.js so we can replay the moves
+    let chessInstance = new Chess(puzzle.FEN);
+    const movesArr = puzzle.Moves.split(" ");
 
-  // Function to show solution when the button is clicked
-  document.getElementById("showSolution").onclick = function () {
-    showSolution(puzzle.Moves);
-  };
-}
-
-
-/*
-// Function to display the moves as text
-function showPuzzle(puzzle) {
-  if (board) board.destroy();
-
-  // Display the opponent's first move before the puzzle starts
-  const firstMove = puzzle.Moves.split(" ")[0]; // Get the opponent's first move
-  const firstMoveText = `Opponent's first move: ${firstMove.slice(0, 2)} to ${firstMove.slice(2)}`;
-
-  // Display this first move
-  const solutionDiv = document.getElementById("solution");
-  solutionDiv.innerHTML = firstMoveText;
-
-  // Initialize the chessboard
-  board = ChessBoard3("board", {
-    position: puzzle.FEN,
-    pieceStyle: "chesspieces/wikipedia",
-    draggable: true, // Enable piece draggability
-  });
-
-  // Wait for the board to initialize
-  setTimeout(() => {
-    // Get the Three.js scene and camera from the chessboard
-    const scene = board.scene;
-    const camera = board.camera;
-    
-    // Ensure the board's renderer is available
-    const rendererDomElement = board.renderer.domElement;
-    if (!rendererDomElement) {
-      console.error("Renderer DOM element not found.");
-      return;
+    // Apply opponent's first move if the checkbox is checked
+    if (document.getElementById("includeFirstMove").checked) {
+      chessInstance.move({ from: movesArr[0].slice(0,2), to: movesArr[0].slice(2,4) });
     }
 
-    // Initialize OrbitControls
-    const controls = new THREE.OrbitControls(camera, rendererDomElement);  // Add orbit controls
+    // Process remaining moves and convert to algebraic notation
+    const remainingMoves = movesArr.slice(1);
+    const algebraicMoves = remainingMoves.map(move => {
+      const moveObj = chessInstance.move({ from: move.slice(0,2), to: move.slice(2,4) });
+      return moveObj ? moveObj.san : move;
+    });
 
-    // Randomize the camera's initial angle for a unique view
-    const randomAngleX = Math.random() * 90 - 45; // Randomize angle between -45 and 45 degrees
-    const randomAngleY = Math.random() * 90 - 45; // Randomize angle between -45 and 45 degrees
+    // Append the solution moves to the solution container
+    const solutionDiv = document.getElementById("solution");
+    solutionDiv.innerHTML += `<br><br>Solution: ${algebraicMoves.join(" ")}`;
 
-    camera.position.set(
-      10 * Math.cos(THREE.MathUtils.degToRad(randomAngleX)),
-      10,
-      10 * Math.sin(THREE.MathUtils.degToRad(randomAngleX))
-    );
-    camera.lookAt(0, 0, 0); // Make sure it looks at the center of the board
+    stopTimer();
+  }
 
-    // Update the controls with new camera position
-    controls.update();
+    function startTimer() {
+      timerStart = Date.now();
+      const timerDisplay = document.getElementById("timer");
+      timerDisplay.textContent = "Time: 0s";
 
-    // Optional: set the zoom and controls to be smoother
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.25;
-    controls.screenSpacePanning = false;
-  }, 0); // Delay execution to ensure the board is fully loaded
-}
-
-*/
-
-    // Function to display the rest of the solution when clicked
-    function showSolution(movesString) {
-      const moves = movesString.split(" ").slice(1); // Skip the first move (opponent's move)
-      const movesText = moves.map((move, index) => {
-        const from = move.slice(0, 2); // First two characters: from square
-        const to = move.slice(2); // Last two characters: to square
-        return `Move ${index + 1}: From ${from} to ${to}`;
-      }).join(" | "); // Display all moves in one line
-
-      const solutionDiv = document.getElementById("solution");
-      solutionDiv.innerHTML += `<br><br>Solution: ${movesText}`;
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - timerStart) / 1000);
+        timerDisplay.textContent = `Time: ${elapsed}s`;
+      }, 1000);
     }
 
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      if (timerStart) {
+        const elapsed = Math.floor((Date.now() - timerStart) / 1000);
+        completionTimes.push(elapsed);
+        timerStart = null;
+        updateAverageTime();
+      }
+    }
 
+    function updateAverageTime() {
+      const avg = completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length;
+      const avgDisplay = document.getElementById("average-time");
+      avgDisplay.textContent = `Average Solve Time: ${avg.toFixed(1)}s (${completionTimes.length} puzzles)`;
+    }
 
     document.getElementById("nextPuzzle").addEventListener("click", loadRandomPuzzle);
+    document.getElementById("reset-stats").addEventListener("click", () => {
+        completionTimes = [];
+        document.getElementById("average-time").textContent = "Average Solve Time: N/A";
+    });
   </script>
 </body>
 </html>
