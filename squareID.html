@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Identify Chess Square Game</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      text-align: center;
+    }
+    /* Style for the clickable chessboard */
+    #gameBoard {
+      display: grid;
+      grid-template-columns: repeat(8, 50px);
+      grid-template-rows: repeat(8, 50px);
+      gap: 2px;
+      justify-content: center;
+      margin: 10px auto 20px;
+      border: 2px solid #333;
+      width: fit-content;
+    }
+    .cell {
+      width: 50px;
+      height: 50px;
+      line-height: 50px;
+      text-align: center;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    /* Standard chessboard colors */
+    .lightSquare {
+      background-color: #f0d9b5;
+    }
+    .darkSquare {
+      background-color: #b58863;
+    }
+    /* Style for the checkbox board */
+    #board-container {
+      display: grid;
+      grid-template-columns: auto repeat(8, 1fr);
+      grid-template-rows: repeat(8, 40px) auto;
+      gap: 5px;
+      justify-content: center;
+      align-items: center;
+      margin: 20px auto;
+      max-width: 400px;
+    }
+    #board-container .row-label,
+    #board-container .col-label {
+      font-weight: bold;
+      line-height: 40px;
+    }
+    #board-container input[type="checkbox"] {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+    .control-buttons {
+      margin: 10px;
+    }
+    .control-buttons button {
+      padding: 8px 12px;
+      margin: 0 5px;
+    }
+    #statsTable {
+      margin: 20px auto;
+      border-collapse: collapse;
+      text-align: center;
+    }
+    #statsTable td, #statsTable th {
+      border: 1px solid #ccc;
+      padding: 5px;
+      min-width: 80px;
+    }
+    #statsTable .label {
+      font-weight: bold;
+      background-color: #f0f0f0;
+    }
+    #statsData {
+      margin-top: 10px;
+      width: 80%;
+      height: 100px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Identify Chess Square Game</h1>
+
+    <!-- Control Buttons for Check/Uncheck, Restart, and Stats Save/Load -->
+    <div class="control-buttons">
+        <button id="checkAll">Check All</button>
+        <button id="uncheckAll">Uncheck All</button>
+        <button id="restart">Restart</button>
+        <button id="saveStats">Save Stats Data</button>
+        <button id="loadStats">Load Stats Data</button>
+      </div>
+
+      
+  <p id="timer">Time: 60</p>
+  <h2 id="question">Click on square ...</h2>
+  
+  <!-- Clickable Chessboard -->
+  <div id="gameBoard"></div>
+  
+  <p>Score: <span id="score">0</span></p>
+  
+  <!-- Checkbox board for squares being tested -->
+  <h3>Squares Being Tested:</h3>
+  <div id="board-container"></div>
+  
+
+  
+  <!-- Stats Table -->
+  <h3>Square Statistics</h3>
+  <div id="statsContainer"></div>
+  
+  <!-- Textarea for JSON Stats Data -->
+  <textarea id="statsData" placeholder="Stats JSON data will appear here..."></textarea>
+  
+  <script>
+    const files = ['a','b','c','d','e','f','g','h'];
+    
+    // Helper: Return a random element from an array.
+    function getRandom(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+    
+    // Determine square color based on standard chessboard pattern.
+    // In standard orientation: bottom-left (a1) is dark.
+    function getSquareColor(square) {
+      const file = square[0];
+      const rank = parseInt(square[1]);
+      // Use indices: a=0, b=1, etc.
+      let fileIndex = files.indexOf(file);
+      // In a standard board, if (fileIndex + rank) is even, then dark, else light.
+      return ((fileIndex + rank) % 2 === 0) ? "light" : "dark";
+    }
+    
+    let score = 0;
+    let timeLeft = 60;
+    let currentSquare = '';
+    let previousSquare = '';
+    let roundStartTime = 0;
+    let timerInterval;
+    
+    // Create statistics for each square.
+    const stats = {};
+    files.forEach(f => {
+      for (let r = 1; r <= 8; r++) {
+        const sq = f + r;
+        stats[sq] = { attempts: 0, correct: 0, totalTime: 0 };
+      }
+    });
+    
+    const scoreDisplay = document.getElementById('score');
+    const questionEl = document.getElementById('question');
+    const timerEl = document.getElementById('timer');
+    const statsContainer = document.getElementById('statsContainer');
+    const statsData = document.getElementById('statsData');
+    
+    let allSquares = [];
+    
+    /* Build the clickable chessboard.
+       The board is built with row 8 on top and row 1 at the bottom.
+       Each cell is given an id equal to its coordinate.
+       Standard chessboard colors are applied.
+    */
+    function buildGameBoard() {
+      const gameBoard = document.getElementById('gameBoard');
+      gameBoard.innerHTML = '';
+      for (let r = 8; r >= 1; r--) {
+        for (let f = 0; f < 8; f++) {
+          const square = files[f] + r;
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          // Apply standard colors: use getSquareColor and assign a CSS class.
+          const color = getSquareColor(square);
+          cell.classList.add(color === "dark" ? "darkSquare" : "lightSquare");
+          // Optionally show the coordinate (you can hide it later if desired)
+          //cell.textContent = square;
+          cell.id = "cell-" + square;
+          // Attach click listener.
+          cell.onclick = () => {
+            handleBoardClick(square, cell);
+          };
+          gameBoard.appendChild(cell);
+        }
+      }
+    }
+    
+    buildGameBoard();
+    
+    /* Build the checkbox board for selecting which squares to test.
+       This board is similar to previous games; by default, at least two squares are checked.
+       Here we select d4 and e4 by default.
+    */
+    function buildBoardSelection() {
+      const boardContainer = document.getElementById('board-container');
+      boardContainer.innerHTML = '';
+      allSquares = [];
+      for (let r = 8; r >= 1; r--) {
+        const rowLabel = document.createElement('div');
+        rowLabel.className = 'row-label';
+        rowLabel.textContent = r;
+        boardContainer.appendChild(rowLabel);
+        for (let f = 0; f < 8; f++) {
+          const sq = files[f] + r;
+          allSquares.push(sq);
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.id = sq;
+          // Default: select d4 and e4.
+          cb.checked = ((files[f] === 'd' || files[f] === 'e') && r === 4);
+          boardContainer.appendChild(cb);
+        }
+      }
+      const blank = document.createElement('div');
+      boardContainer.appendChild(blank);
+      files.forEach(letter => {
+        const colLabel = document.createElement('div');
+        colLabel.className = 'col-label';
+        colLabel.textContent = letter;
+        boardContainer.appendChild(colLabel);
+      });
+    }
+    
+    buildBoardSelection();
+    
+    function getCheckedSquares() {
+      return allSquares.filter(sq => document.getElementById(sq).checked);
+    }
+    
+    // Update the statistics table.
+    function updateStatsTable() {
+      const table = document.createElement('table');
+      table.id = 'statsTable';
+      let headerRow = document.createElement('tr');
+      let blankHeader = document.createElement('th');
+      blankHeader.className = 'label';
+      headerRow.appendChild(blankHeader);
+      files.forEach(letter => {
+        let th = document.createElement('th');
+        th.className = 'label';
+        th.textContent = letter;
+        headerRow.appendChild(th);
+      });
+      table.appendChild(headerRow);
+      
+      let worstArr = [];
+      let slowestArr = [];
+      for (let f of files) {
+        for (let r = 1; r <= 8; r++) {
+          const sq = f + r;
+          const data = stats[sq];
+          if (data.attempts > 0) {
+            let pct = data.correct / data.attempts;
+            let avgTime = data.totalTime / data.attempts;
+            worstArr.push({ sq, pct });
+            slowestArr.push({ sq, avgTime });
+          }
+        }
+      }
+      worstArr.sort((a, b) => a.pct - b.pct);
+      slowestArr.sort((a, b) => b.avgTime - a.avgTime);
+      const worstSet = new Set(worstArr.slice(0, 5).map(o => o.sq));
+      const slowestSet = new Set(slowestArr.slice(0, 5).map(o => o.sq));
+      
+      for (let r = 8; r >= 1; r--) {
+        let tr = document.createElement('tr');
+        let rowLabel = document.createElement('th');
+        rowLabel.className = 'label';
+        rowLabel.textContent = r;
+        tr.appendChild(rowLabel);
+        for (let f of files) {
+          const sq = f + r;
+          const data = stats[sq];
+          let td = document.createElement('td');
+          if (data.attempts > 0) {
+            let avgTime = (data.totalTime / data.attempts).toFixed(0);
+            let pct = ((data.correct / data.attempts) * 100).toFixed(0);
+            td.innerHTML = `Avg: ${avgTime}ms<br>%: ${pct}%<br>n: ${data.attempts}`;
+          } else {
+            td.innerHTML = '-';
+          }
+          if (worstSet.has(sq)) {
+            td.style.backgroundColor = 'lightcoral';
+          } else if (slowestSet.has(sq)) {
+            td.style.backgroundColor = 'lightyellow';
+          }
+          tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+      const statsContainer = document.getElementById('statsContainer');
+      statsContainer.innerHTML = '';
+      statsContainer.appendChild(table);
+    }
+    
+    // Main game round: Pick a new target square and update the question.
+    function startRound() {
+      let validSquares = getCheckedSquares();
+      if (validSquares.length === 0) {
+        validSquares = ['d4','e4'];
+      }
+      // Ensure we do not pick the same square as last round (if possible)
+      if (validSquares.length > 1) {
+        let newSquare = getRandom(validSquares);
+        while (newSquare === previousSquare) {
+          newSquare = getRandom(validSquares);
+        }
+        currentSquare = newSquare;
+      } else {
+        currentSquare = validSquares[0];
+      }
+      previousSquare = currentSquare;
+      roundStartTime = Date.now();
+      questionEl.textContent = `Click on square ${currentSquare}`;
+    }
+    
+    // Handler for when a square on the game board is clicked.
+    function handleBoardClick(clickedSquare, cellElement) {
+      // Only process if a target square has been set.
+      if (!currentSquare) return;
+      let elapsed = Date.now() - roundStartTime;
+      stats[currentSquare].attempts++;
+      if (clickedSquare === currentSquare) {
+        cellElement.style.backgroundColor = 'lightgreen';
+        stats[currentSquare].correct++;
+        score++;
+      } else {
+        cellElement.style.backgroundColor = 'lightcoral';
+        score = Math.max(0, score - 1);
+      }
+      stats[currentSquare].totalTime += elapsed;
+      scoreDisplay.textContent = score;
+      updateStatsTable();
+      // Brief delay before starting next round.
+      setTimeout(() => {
+        // Reset board colors.
+        buildGameBoard();
+        startRound();
+      }, 300);
+    }
+    
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = `Time: ${timeLeft}`;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          questionEl.textContent = 'Time is up!';
+          //document.getElementById('gameBoard').innerHTML = '';
+        }
+      }, 1000);
+    }
+    
+    // Check/Uncheck controls for board selection.
+    document.getElementById('checkAll').onclick = () => {
+      allSquares.forEach(sq => {
+        document.getElementById(sq).checked = true;
+      });
+    };
+    document.getElementById('uncheckAll').onclick = () => {
+      allSquares.forEach(sq => {
+        document.getElementById(sq).checked = false;
+      });
+    };
+    
+    // Restart button: resets score and timer (stats persist).
+    document.getElementById('restart').onclick = () => {
+      clearInterval(timerInterval);
+      timeLeft = 60;
+      score = 0;
+      scoreDisplay.textContent = score;
+      timerEl.textContent = `Time: ${timeLeft}`;
+      startRound();
+      startTimer();
+    };
+    
+    // Save stats: output JSON string in the textarea.
+    document.getElementById('saveStats').onclick = () => {
+      statsData.value = JSON.stringify(stats, null, 2);
+    };
+    
+    // Load stats: read JSON from the textarea and update stats.
+    document.getElementById('loadStats').onclick = () => {
+      try {
+        const loaded = JSON.parse(statsData.value);
+        Object.keys(loaded).forEach(sq => {
+          if (stats[sq]) {
+            stats[sq] = loaded[sq];
+          }
+        });
+        updateStatsTable();
+      } catch (e) {
+        alert("Invalid JSON data");
+      }
+    };
+    
+    startRound();
+    startTimer();
+  </script>
+</body>
+</html>
