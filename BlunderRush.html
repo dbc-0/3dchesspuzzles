@@ -20,7 +20,15 @@
 
   <style>
     html, body { margin: 0; padding: 0; height: 100%; background: #111; color: #fff; font-family: sans-serif; }
-    body { display: flex; flex-direction: column; align-items: center; padding: 1em; }
+    body { 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: flex-start; /* Align content to the top */
+      align-items: center; 
+      height: auto; /* Allow content to grow */
+      overflow-y: auto; /* Enable vertical scrolling */
+      padding: 1em; 
+    }
     #controls { margin-bottom: 1em; }
     #score { font-size: 2em; margin: 0.5em; }
     #strikes { font-size: 1.5em; margin: 0.5em; color: #e74c3c; }
@@ -89,6 +97,12 @@
     /* Hide the 2D board initially */
     #board-2d {
       display: none;
+    }
+
+    /* Ensure the board is centered and fully visible */
+    #board-2d, #board-3d {
+      margin: 0 auto;
+      display: block;
     }
   </style>
   <script>
@@ -207,6 +221,13 @@
       document.getElementById('strikes').textContent = 'Strikes: 0';
       nextPuzzle();
       timerInterval = setInterval(updateTimer, 1000);
+
+      // Scroll to the bottom to ensure the board is fully visible
+      scrollToBottom();
+    }
+
+    function scrollToBottom() {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
 
     safeBtn.addEventListener('click', () => handleAnswer(true));
@@ -287,6 +308,9 @@
       board.orientation(chess.turn() === 'w' ? 'white' : 'black');
       board.position(chess.fen());
       showPrompt();
+
+      // Scroll to the bottom to ensure the board is fully visible
+      scrollToBottom();
     }
 
     function choosePlyOffset(totalPre) {
@@ -388,6 +412,9 @@
           }
         }, 300 * (idx + 1));
       });
+
+      // Scroll to the bottom to ensure the board is fully visible
+      scrollToBottom();
     }
 
     function clearHighlights() {
@@ -467,6 +494,7 @@
       const finalScoreElem = document.getElementById('final-score');
       finalScoreElem.textContent = score;
       gameOverElem.style.display = 'block';
+      scrollToBottom();
     }
 
     // Restart game logic
