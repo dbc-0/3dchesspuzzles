@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blunder Rush: Safe or Unsafe</title>
+
+  <!-- Dependencies -->
+
+  <!--https://www.zapsplat.com/license-type/standard-license/-->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r80/three.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"
+    integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2"
+    crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="OrbitControls.js"></script>
+
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #111; color: #fff; font-family: sans-serif; }
+    body { display: flex; flex-direction: column; align-items: center; padding: 1em; }
+    #controls { margin-bottom: 1em; }
+    #score { font-size: 2em; margin: 0.5em; }
+    #strikes { font-size: 1.5em; margin: 0.5em; color: #e74c3c; }
+    #timer { font-size: 1.5em; margin: 0.5em; }
+    #board { width: 90vw; max-width: 600px; height: 90vw; max-height: 600px; position: relative; }
+    #move-prompt { font-size: 1.2em; margin: 1em; }
+    .btn { font-size: 1em; padding: 0.5em 1em; margin: 0.5em; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-safe { background: #2ecc71; color: #fff; }
+    .btn-unsafe { background: #e74c3c; color: #fff; }
+    .highlight { background-color: rgba(255, 255, 0, 0.5) !important; }
+    #puzzle-log {
+      display: none; /* Initially hidden */
+    }
+
+    #countdown-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      font-size: 5em;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      display: none;
+    }
+
+    .strike-flash {
+      animation: flash-red 0.5s ease-in-out;
+    }
+
+    @keyframes flash-red {
+      0% { transform: scale(1); color: #e74c3c; }
+      50% { transform: scale(1.5); color: #ff0000; }
+      100% { transform: scale(1); color: #e74c3c; }
+    }
+
+    .score-increase {
+      animation: score-bounce 0.5s ease-in-out;
+    }
+
+    @keyframes score-bounce {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.5); }
+      100% { transform: scale(1); }
+    }
+
+    /* Styling for the 3D board */
+    #board-3d {
+      width: 100%;
+      max-width: 900px;
+      height: calc(100vh - 200px);
+      box-sizing: border-box;
+      display: none; /* Initially hidden */
+    }
+
+    @media (max-width: 600px) {
+      #board-3d {
+        height: calc(100vh - 220px);
+      }
+    }
+
+    /* Hide the 2D board initially */
+    #board-2d {
+      display: none;
+    }
+  </style>
+  <script>
+    let use3D = false; // Default to 2D board
+  </script>
+</head>
+<body>
+  <h2>Puzzle Rush: Safe or Unsafe</h2>
+  <div id="controls">
+    <label for="board-type">Select Board Type:</label>
+    <select id="board-type">
+      <option value="2d" selected>2D</option>
+      <option value="3d">3D</option>
+    </select>
+    <button id="start-game" class="btn">Start Game</button>
+  </div>
+  <div id="score" style="display:none;">Score: 0</div>
+  <div id="strikes" style="display:none;">Strikes: 0</div>
+  <div id="timer" style="display:none;">Time: 05:00</div>
+  <div id="move-prompt" style="display:none;"></div>
+  <div id="board-2d" style="display:none;"></div> <!-- Div for 2D board -->
+  <div id="board-3d"></div> <!-- Div for 3D board -->
+  <div id="answer-buttons" style="display:none;">
+    <button id="btn-safe" class="btn btn-safe">Safe!</button>
+    <button id="btn-unsafe" class="btn btn-unsafe">Unsafe!</button>
+  </div>
+  <div id="puzzle-log" style="display:none;"></div>
+  <div id="countdown-overlay"></div>
+  <div id="game-over" style="display:none; text-align: center; margin-top: 2em; color: #fff;">
+    <h1>Game Over!</h1>
+    <p>Your final score: <span id="final-score"></span></p>
+    <p>Click on the links above to review the puzzles you missed.</p>
+    <button id="restart-game" class="btn">Restart Game</button>
+  </div>
+  <audio id="ding-sound" src="ding.mp3"></audio>
+  <audio id="buzz-sound" src="buzz.mp3"></audio>
+  <audio id="countdown-sound" src="countdown.mp3"></audio>
+
+  <script>
+    let puzzles = [];
+    let currentPuzzle = null;
+    let chess, board;
+    let nextIndex = 0;
+    let score = 0;
+    let strikes = 0;
+    let timerInterval;
+    let timeLeft = 300;
+    let acceptingAnswers = false;
+    let minRating = 300;
+    let maxRating = 350;
+
+    // Load puzzles CSV
+    Papa.parse("puzzles_with_moves_and_evals.csv", {
+      download: true,
+      header: true,
+      complete(results) {
+        puzzles = results.data
+          .filter(r => r.PreFENMoves && r.Moves && r.GameUrl) // Ensure GameUrl is present
+          .map(r => ({
+            preMoves: r.PreFENMoves.trim().split(/\s+/),
+            moves: r.Moves.trim().split(/\s+/),
+            Rating: r.Rating,
+            GameUrl: r.GameUrl.trim() // Include GameUrl
+          }));
+      }
+    });
+
+    const startBtn = document.getElementById('start-game');
+    const safeBtn = document.getElementById('btn-safe');
+    const unsafeBtn = document.getElementById('btn-unsafe');
+
+    startBtn.addEventListener('click', () => {
+      const boardType = document.getElementById('board-type').value;
+      use3D = boardType === '3d';
+
+      if (use3D) {
+        load3DChessboardScript(() => {
+          initializeGame();
+        });
+      } else {
+        initializeGame();
+      }
+    });
+
+    function load3DChessboardScript(callback) {
+      const script = document.createElement('script');
+      script.src = 'chessboard3.min.js';
+      script.onload = callback;
+      document.body.appendChild(script);
+    }
+
+    function initializeGame() {
+      if (!puzzles.length) {
+        alert('Puzzles still loading, please wait...');
+        return;
+      }
+
+      // Hide the controls and show the appropriate board
+      document.getElementById('controls').style.display = 'none';
+      if (use3D) {
+        document.getElementById('board-3d').style.display = 'block';
+        document.getElementById('board-2d').style.display = 'none';
+      } else {
+        document.getElementById('board-2d').style.display = 'block';
+        document.getElementById('board-3d').style.display = 'none';
+      }
+
+      ['score', 'strikes', 'timer', 'move-prompt', 'answer-buttons'].forEach(id => {
+        document.getElementById(id).style.display = 'block';
+      });
+
+      score = 0;
+      strikes = 0;
+      timeLeft = 300;
+      document.getElementById('score').textContent = 'Score: 0';
+      document.getElementById('strikes').textContent = 'Strikes: 0';
+      nextPuzzle();
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    safeBtn.addEventListener('click', () => handleAnswer(true));
+    unsafeBtn.addEventListener('click', () => handleAnswer(false));
+
+    function startCountdown(callback) {
+      const overlay = document.getElementById('countdown-overlay');
+      overlay.style.display = 'flex';
+      let count = 3;
+      overlay.textContent = count;
+      const dingSound = document.getElementById('ding-sound');
+      dingSound.play();
+      
+      const interval = setInterval(() => {
+        count--;
+        
+        if (count === 0) {
+          overlay.textContent = 'Go!';
+        } else if (count < 0) {
+          clearInterval(interval);
+          overlay.style.display = 'none';
+          callback();
+        } else {
+          overlay.textContent = count;
+        }
+      }, 1000);
+    }
+
+    function updateTimer() {
+      timeLeft--;
+      const m = String(Math.floor(timeLeft/60)).padStart(2,'0');
+      const s = String(timeLeft%60).padStart(2,'0');
+      document.getElementById('timer').textContent = `Time: ${m}:${s}`;
+      if (timeLeft <= 0) endGame();
+    }
+
+    function nextPuzzle() {
+      acceptingAnswers = true;
+      clearHighlights();
+
+      // Filter puzzles by a narrower rating range
+      const filteredPuzzles = puzzles.filter(puzzle => {
+        const rating = parseInt(puzzle.Rating, 10);
+        return rating >= maxRating - 50 && rating < maxRating;
+      });
+
+      // If no puzzles are found in the current range, expand the range
+      if (filteredPuzzles.length === 0) {
+        console.log(`No puzzles found in range ${maxRating - 50}-${maxRating}. Expanding range.`);
+        maxRating += 50;
+        return nextPuzzle();
+      }
+
+      // Select a random puzzle from the filtered list
+      currentPuzzle = filteredPuzzles[Math.floor(Math.random() * filteredPuzzles.length)];
+
+      chess = new Chess();
+      if (use3D) {
+        board = ChessBoard3('board-3d', {
+          position: chess.fen(),
+          pieceStyle: 'chesspieces/wikipedia',
+          draggable: false,
+          orientation: chess.turn() === 'w' ? 'white' : 'black' // Set orientation dynamically
+        });
+      } else {
+        board = Chessboard('board-2d', {
+          draggable: false,
+          position: chess.fen(),
+          orientation: chess.turn() === 'w' ? 'white' : 'black'
+        });
+      }
+
+      const totalPre = currentPuzzle.preMoves.length;
+      const N = choosePlyOffset(totalPre);
+      nextIndex = totalPre - N;
+      for (let i = 0; i < nextIndex; i++) chess.move(currentPuzzle.preMoves[i]);
+      //if (!use3D) board.orientation(chess.turn() === 'w' ? 'white' : 'black');
+      board.orientation(chess.turn() === 'w' ? 'white' : 'black');
+      board.position(chess.fen());
+      showPrompt();
+    }
+
+    function choosePlyOffset(totalPre) {
+      const r = Math.random()*100;
+      let N = r < 15 ? 0 : r < 30 ? 1 : r < 50 ? 2 : r < 70 ? 3 : r < 90 ? 4 : 5;
+      N = Math.min(N, totalPre);
+      return N - (N % 2);
+    }
+
+    function showPrompt() {
+      clearHighlights();
+      const pm = currentPuzzle.preMoves;
+      const mv = currentPuzzle.moves;
+      let from, to;
+
+      if (nextIndex < pm.length) {
+        const tmp = new Chess(chess.fen());
+        const moveObj = tmp.move(pm[nextIndex], { sloppy: true });
+        from = moveObj.from;
+        to = moveObj.to;
+        document.getElementById('move-prompt').textContent = `Next move: ${moveObj.san}`;
+      } else {
+        const coord = mv[0];
+        from = coord.slice(0, 2);
+        to = coord.slice(2, 4);
+        const tmp = new Chess(chess.fen());
+        const moveObj = tmp.move({ from, to, sloppy: true });
+        document.getElementById('move-prompt').textContent = `Next move: ${moveObj ? moveObj.san : coord}`;
+      }
+
+      highlightSquare(from);
+      highlightSquare(to);
+    }
+
+    function handleAnswer(chosenSafe) {
+      if (!acceptingAnswers) return;
+      acceptingAnswers = false;
+      const isSafe = nextIndex < currentPuzzle.preMoves.length;
+      const puzzleId = currentPuzzle.PuzzleId || 'Unknown';
+      const rating = currentPuzzle.Rating || 'Unknown';
+      const gameUrl = currentPuzzle.GameUrl || '#';
+
+      const dingSound = document.getElementById('ding-sound');
+      const buzzSound = document.getElementById('buzz-sound');
+
+      if (chosenSafe === isSafe) {
+        dingSound.play();
+        if (isSafe) {
+          chess.move(currentPuzzle.preMoves[nextIndex]);
+          board.position(chess.fen());
+          setTimeout(() => {
+            if (nextIndex + 1 < currentPuzzle.preMoves.length) {
+              chess.move(currentPuzzle.preMoves[nextIndex + 1]);
+              board.position(chess.fen());
+            }
+            nextIndex += 2;
+            acceptingAnswers = true;
+            showPrompt();
+          }, 300);
+        } else {
+          score++;
+          const scoreElem = document.getElementById('score');
+          scoreElem.textContent = 'Score: ' + score;
+          scoreElem.classList.add('score-increase');
+          setTimeout(() => scoreElem.classList.remove('score-increase'), 500);
+          maxRating += 50;
+          logPuzzleResult(gameUrl, rating, true, chosenSafe, isSafe, nextIndex);
+          playSolution();
+        }
+      } else {
+        buzzSound.play();
+        strikes++;
+        const strikesElem = document.getElementById('strikes');
+        strikesElem.textContent = 'Strikes: ' + strikes;
+        strikesElem.classList.add('strike-flash');
+        setTimeout(() => strikesElem.classList.remove('strike-flash'), 500);
+        logPuzzleResult(gameUrl, rating, false, chosenSafe, isSafe, nextIndex);
+        playSolution();
+      }
+    }
+
+    function playSolution() {
+      acceptingAnswers = false;
+      const temp = new Chess(chess.fen());
+      currentPuzzle.moves.forEach((coord, idx) => {
+        setTimeout(() => {
+          const from = coord.slice(0, 2);
+          const to = coord.slice(2, 4);
+          temp.move({ from, to, sloppy: true });
+          board.position(temp.fen());
+          clearHighlights();
+          highlightSquare(from);
+          highlightSquare(to);
+          if (idx === currentPuzzle.moves.length - 1) {
+            setTimeout(() => {
+              if (strikes >= 3) endGame();
+              else nextPuzzle();
+            }, 500);
+          }
+        }, 300 * (idx + 1));
+      });
+    }
+
+    function clearHighlights() {
+      if (use3D) {
+        // Placeholder for clearing highlights on 3D board (if supported by ChessBoard3)
+        console.warn('Clearing highlights not yet implemented for 3D board.');
+      } else {
+        document.querySelectorAll('#board-2d .square-55d63.highlight').forEach(el => el.classList.remove('highlight'));
+      }
+    }
+
+    function highlightSquare(sq) {
+      if (use3D) {
+        // Placeholder for 3D board highlighting (if supported by ChessBoard3)
+        console.warn('Highlighting not yet implemented for 3D board.');
+      } else {
+        const selector = `#board-2d .square-55d63[data-square='${sq}']`;
+        document.querySelectorAll(selector).forEach(el => el.classList.add('highlight'));
+      }
+    }
+
+    function logPuzzleResult(gameUrl, rating, isCorrect, chosenSafe, isSafe, currentMoveIndex) {
+      console.log(`Logging result: gameUrl = ${gameUrl}, Rating = ${rating}, Correct = ${isCorrect}, ChosenSafe = ${chosenSafe}, IsSafe = ${isSafe}, CurrentMoveIndex = ${currentMoveIndex}`);
+
+      const puzzleLog = document.getElementById('puzzle-log');
+      if (!puzzleLog) {
+        console.error('Puzzle log container not found!');
+        return;
+      }
+
+      // Determine the link and text color
+      let linkUrl = gameUrl;
+      let textColor = '#2ecc71'; // Default to green for correct answers
+
+      if (!isCorrect) {
+        if (chosenSafe && !isSafe) {
+          // User thought the move was safe but it wasn't (red)
+          textColor = '#e74c3c';
+        } else if (!chosenSafe && isSafe) {
+          // User thought the move was unsafe but it was safe (pink)
+          textColor = '#ff69b4';
+          // Link to the move the user was on (ply count)
+          const baseUrl = gameUrl.split('#')[0]; // Remove any existing fragment
+          linkUrl = `${baseUrl}#${currentMoveIndex + 1}`; // Ply count is 1-based
+        }
+      }
+
+      // Create a link for the rating
+      const link = document.createElement('a');
+      link.href = linkUrl;
+      link.target = '_blank';
+      link.textContent = `${rating}`;
+      link.style.color = textColor; // Set the text color
+      link.style.textDecoration = 'none';
+
+      // Append the link to the log
+      puzzleLog.style.display = 'block'; // Ensure the log is visible
+      puzzleLog.appendChild(link);
+
+      // Add a space after each entry
+      puzzleLog.appendChild(document.createTextNode(' '));
+    }
+
+    function endGame() {
+      clearInterval(timerInterval);
+
+      // Hide game elements
+      ['score', 'strikes', 'timer', 'move-prompt', 'board', 'answer-buttons'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.style.display = 'none';
+        }
+      });
+
+      // Show "Game Over" message
+      const gameOverElem = document.getElementById('game-over');
+      const finalScoreElem = document.getElementById('final-score');
+      finalScoreElem.textContent = score;
+      gameOverElem.style.display = 'block';
+    }
+
+    // Restart game logic
+    document.getElementById('restart-game').addEventListener('click', () => {
+      location.reload();
+    });
+
+    // Ensure the 2D board div has the correct size and visibility
+    document.getElementById('board-2d').style.width = '90vw';
+    document.getElementById('board-2d').style.maxWidth = '600px';
+    document.getElementById('board-2d').style.height = '90vw';
+    document.getElementById('board-2d').style.maxHeight = '600px';
+    document.getElementById('board-2d').style.position = 'relative';
+  </script>
+</body>
+</html>
