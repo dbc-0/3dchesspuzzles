@@ -83,14 +83,14 @@
     #board-3d {
       width: 100%;
       max-width: 900px;
-      height: calc(100vh - 200px);
+      aspect-ratio: 4 / 3;
       box-sizing: border-box;
       display: none; /* Initially hidden */
     }
 
     @media (max-width: 600px) {
       #board-3d {
-        height: calc(100vh - 220px);
+        aspect-ratio: 4 / 3;
       }
     }
 
@@ -123,8 +123,7 @@
   <div id="strikes" style="display:none;">Strikes: 0</div>
   <div id="timer" style="display:none;">Time: 05:00</div>
   <div id="move-prompt" style="display:none;"></div>
-  <div id="board-2d" style="display:none;"></div> <!-- Div for 2D board -->
-  <div id="board-3d"></div> <!-- Div for 3D board -->
+  
   <div id="answer-buttons" style="display:none;">
     <button id="btn-safe" class="btn btn-safe">Safe!</button>
     <button id="btn-unsafe" class="btn btn-unsafe">Unsafe!</button>
@@ -140,6 +139,8 @@
   <audio id="ding-sound" src="ding.mp3"></audio>
   <audio id="buzz-sound" src="buzz.mp3"></audio>
   <audio id="countdown-sound" src="countdown.mp3"></audio>
+  <div id="board-2d" style="display:none;"></div> <!-- Div for 2D board -->
+  <div id="board-3d"></div> <!-- Div for 3D board -->
 
   <script>
     let puzzles = [];
@@ -151,8 +152,8 @@
     let timerInterval;
     let timeLeft = 300;
     let acceptingAnswers = false;
-    let minRating = 300;
-    let maxRating = 350;
+    let minRating = 650;
+    let maxRating = 700;
 
     // Load puzzles CSV
     Papa.parse("puzzles_with_moves_and_evals.csv", {
