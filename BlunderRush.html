@@ -373,6 +373,11 @@
 
       if (chosenSafe === isSafe) {
         dingSound.play();
+        score++;
+        const scoreElem = document.getElementById('score');
+        scoreElem.textContent = 'Score: ' + score;
+        scoreElem.classList.add('score-increase');
+        setTimeout(() => scoreElem.classList.remove('score-increase'), 500);
         if (isSafe) {
           chess.move(currentPuzzle.preMoves[nextIndex]);
           board.position(chess.fen());
@@ -386,11 +391,6 @@
             showPrompt();
           }, 300);
         } else {
-          score++;
-          const scoreElem = document.getElementById('score');
-          scoreElem.textContent = 'Score: ' + score;
-          scoreElem.classList.add('score-increase');
-          setTimeout(() => scoreElem.classList.remove('score-increase'), 500);
           maxRating += 50;
           logPuzzleResult(gameUrl, rating, true, chosenSafe, isSafe, nextIndex);
           playSolution();

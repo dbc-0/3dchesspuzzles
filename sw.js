@@ -1,4 +1,4 @@
-const CACHE_NAME = 'blunderrush-v1';
+const CACHE_NAME = 'blunderrush-v2';
 
 const ASSETS_TO_CACHE = [
   './',
