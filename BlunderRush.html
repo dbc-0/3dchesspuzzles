@@ -5,17 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Blunder Rush: Safe or Unsafe</title>
 
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BlunderRush">
+  <link rel="apple-touch-icon" href="img/icon-180.png">
+  <meta name="theme-color" content="#111111">
+
   <!-- Dependencies -->
 
   <!--https://www.zapsplat.com/license-type/standard-license/-->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r80/three.min.js"></script>
-  <script src="https://code.jquery.com/jquery-3.5.1.min.js"
-    integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2"
-    crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="vendor/chess.min.js"></script>
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/jquery-3.5.1.min.js"></script>
+  <script src="vendor/chessboard-1.0.0.min.js"></script>
+  <link rel="stylesheet" href="vendor/chessboard-1.0.0.min.css" />
+  <script src="papaparse.min.js"></script>
   <script src="OrbitControls.js"></script>
 
   <style>
@@ -110,6 +116,12 @@
   </script>
 </head>
 <body>
+  <div id="loading-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%;
+    background:#111; color:#fff; display:flex; flex-direction:column;
+    justify-content:center; align-items:center; z-index:9999; font-family:sans-serif;">
+    <h2>Loading Blunder Rush...</h2>
+    <p id="loading-status">Downloading puzzle database for offline play...</p>
+  </div>
   <h2>Puzzle Rush: Safe or Unsafe</h2>
   <div id="controls">
     <label for="board-type">Select Board Type:</label>
@@ -138,7 +150,6 @@
   </div>
   <audio id="ding-sound" src="ding.mp3"></audio>
   <audio id="buzz-sound" src="buzz.mp3"></audio>
-  <audio id="countdown-sound" src="countdown.mp3"></audio>
   <div id="board-2d" style="display:none;"></div> <!-- Div for 2D board -->
   <div id="board-3d"></div> <!-- Div for 3D board -->
 
@@ -168,6 +179,9 @@
             Rating: r.Rating,
             GameUrl: r.GameUrl.trim() // Include GameUrl
           }));
+        // Dismiss loading overlay
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.style.display = 'none';
       }
     });
 
@@ -509,6 +523,15 @@
     document.getElementById('board-2d').style.height = '90vw';
     document.getElementById('board-2d').style.maxHeight = '600px';
     document.getElementById('board-2d').style.position = 'relative';
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('SW registered:', reg.scope))
+          .catch(err => console.error('SW registration failed:', err));
+      });
+    }
   </script>
 </body>
 </html>
