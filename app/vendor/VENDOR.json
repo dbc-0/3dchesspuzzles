@@ -1,0 +1,1 @@
+{"name":"chess.js","version":"0.10.3","note":"Vendored from /vendor/chess.min.js (repo root). A single `export { Chess };` line was appended so it can be imported as an ES module offline, no build step. Everything above that line is untouched upstream chess.js 0.10.3."}

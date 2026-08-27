@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>tactics.js -- test harness</title>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+  body { padding: 16px; padding-bottom: 48px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-family: var(--font-display); }
+  p.sub { color: var(--text-3); margin: 0 0 16px; font-size: 13px; }
+  .layout { display: grid; grid-template-columns: 420px 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .phone {
+    width: 390px; height: 844px; margin: 0 auto; border-radius: 40px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35); border: 1px solid var(--border);
+  }
+  .phone .app-shell { --shell-height: 844px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  button.tool { font: inherit; padding: 6px 11px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-3); color: var(--text); cursor: pointer; }
+  button.tool:hover { border-color: var(--accent); }
+  #assert-result { font-weight: 600; padding: 6px 10px; border-radius: 6px; display: inline-block; margin-bottom: 12px; }
+  #assert-result.pass { background: var(--safe-soft); color: var(--safe); }
+  #assert-result.fail { background: var(--unsafe-soft); color: var(--unsafe); }
+  #log { height: 320px; overflow-y: auto; background: #000; color: #9dffb0; font: 12px/1.5 ui-monospace, Menlo, monospace; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); }
+  #log .err { color: #ff8a80; }
+  #log .warn { color: #ffd479; }
+  #log div { white-space: pre-wrap; word-break: break-word; }
+</style>
+</head>
+<body>
+
+<h1>tactics.js -- test harness</h1>
+<p class="sub">
+  Standalone exercise of createMode() from mode-interface.js's ModeContext contract, with a
+  stub data layer (hand-written puzzles, no network), a REAL app/js/rating.js engine backed
+  by an in-memory store, and a real board2d.js. Query params:
+  <code>?p=basic|promo|multiline</code> forces which stub puzzle ctx.data.pick() serves,
+  <code>&variant=timed|survival|practice</code>, <code>&framing=offensive|defensive</code>,
+  <code>&perspective=own|opponent</code>, <code>&promptStyle=highlight|notation</code>,
+  <code>&band=N</code> (only set to force fixed-band practice mode instead of rated play).
+</p>
+
+<div id="assert-result">window.__harness: booting&hellip;</div>
+
+<div class="layout">
+  <div class="phone">
+    <div class="app-shell">
+      <div class="screen screen--play" id="ctx-root"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <div class="row">
+        <button class="tool" data-action="restart">handle.restart()</button>
+        <button class="tool" data-action="pause">handle.pause()</button>
+        <button class="tool" data-action="resume">handle.resume()</button>
+        <button class="tool" data-action="destroy">handle.destroy()</button>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="confirm-toggle" checked> ctx.ui.confirm() resolves true</label>
+      </div>
+    </div>
+    <h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3)">Log</h2>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { createBoard } from '../js/board2d.js';
+  import { createMode } from '../js/modes/tactics.js';
+  import { createRating } from '../js/rating.js';
+
+  const logEl = document.getElementById('log');
+  function log(msg, kind) {
+    const line = document.createElement('div');
+    if (kind) line.className = kind;
+    const t = new Date().toISOString().split('T')[1].replace('Z', '');
+    line.textContent = `[${t}] ${msg}`;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+    // eslint-disable-next-line no-console
+    console.log('[harness]', msg);
+  }
+  window.addEventListener('error', (e) => log(`window error: ${e.message}`, 'err'));
+  window.addEventListener('unhandledrejection', (e) => log(`unhandled rejection: ${e.reason}`, 'err'));
+
+  // ---- hand-written stub puzzles ------------------------------------------
+  // Verified legal move-by-move with vendor chess.js before being hard-coded here
+  // (see the task's verification notes). Covers: a plain single-move solve, a
+  // promotion, and a multi-ply line with a pre-move and an auto-played opponent reply.
+  const PUZZLES = {
+    basic: {
+      i: 'test-basic', r: 1200,
+      f: '4k3/8/8/8/8/8/8/2b1K1Q1 w - - 0 1',
+      p: [], d: 0,
+      m: ['g1e3', 'c1e3'], // White blunders Qe3+??, Black solves with Bxe3
+      e: 0, u: 'https://lichess.org/abcdefgh', t: 'test',
+    },
+    promo: {
+      i: 'test-promo', r: 1500,
+      f: 'r3k3/6P1/8/8/8/8/8/4K3 b - - 0 1',
+      p: [], d: 0,
+      m: ['a8b8', 'g7g8q'], // Black blunders Rb8??, White solves with g8=Q+
+      e: 0, u: '', t: 'test',
+    },
+    multiline: {
+      i: 'test-multiline', r: 1600,
+      f: '4k3/8/8/8/8/8/R7/4K3 w - - 0 1',
+      p: ['Ra1'], d: 1,
+      m: ['e8d7', 'a1a7', 'd7e6', 'e1e2'], // Kd7??, Ra7+, Ke6, Ke2 (line continues 2 solver plies)
+      e: 0, u: '', t: 'test',
+    },
+  };
+
+  const params = new URLSearchParams(location.search);
+  const forcedKey = params.get('p') && PUZZLES[params.get('p')] ? params.get('p') : null;
+  const variant = params.get('variant') || 'practice';
+  const framing = params.get('framing') === 'defensive' ? 'defensive' : 'offensive';
+  const perspective = params.get('perspective') === 'opponent' ? 'opponent' : 'own';
+  const promptStyle = params.get('promptStyle') === 'notation' ? 'notation' : 'highlight';
+
+  window.__pickLog = [];
+  function createStubData() {
+    return {
+      async ready() { return { band: 100, bands: [] }; },
+      async pick(opts) {
+        window.__lastPickOpts = opts;
+        const key = forcedKey || Object.keys(PUZZLES)[window.__pickLog.length % 3];
+        window.__pickLog.push(key);
+        log(`ctx.data.pick(${JSON.stringify(opts)}) -> "${key}"`);
+        // Return a fresh clone each time so mutating one attempt never leaks into the next.
+        return JSON.parse(JSON.stringify(PUZZLES[key]));
+      },
+      async prefetchAround() {},
+      async ensureBand() { return []; },
+      bandFor() { return 0; },
+      index: null,
+      bands: [],
+      loadedCount: 0,
+      clearRecent() {},
+    };
+  }
+
+  // ---- board: real board2d.js, wrapped so onMove can be rebound live ------
+  // See the "wiring" comment in tactics.js for why this exists: BoardOptions.onMove is
+  // fixed at createBoard() time, but ctx.board is handed to a mode only after it already
+  // exists. This harness closes that gap with a small, harmless setOnMove() passthrough.
+  const boardHost = document.createElement('div');
+  boardHost.style.width = '100%';
+  let liveOnMove = null;
+  const rawBoard = createBoard(boardHost, {
+    interactive: false,
+    coordinates: true,
+    onMove: (from, to) => (liveOnMove ? liveOnMove(from, to) : false),
+  });
+  const board = Object.assign(Object.create(null), rawBoard, {
+    setOnMove(fn) { liveOnMove = fn; },
+  });
+  window.__board = board;
+
+  // ---- rating: the REAL app/js/rating.js engine, backed by an in-memory store -------------
+  // (not a stub -- this is the actual Glicko-1 code the shell uses) so rating math, bucket
+  // keys and nextTarget()'s widening-spread behaviour are exercised for real.
+  const memoryStore = new Map();
+  const rating = createRating({
+    get: (k) => memoryStore.get(k),
+    set: (k, v) => memoryStore.set(k, v),
+  });
+  const bucket = { mode: 'tactics', board: '2d', promptStyle, perspective, framing };
+  window.__rating = rating;
+  window.__bucket = bucket;
+
+  window.__statsLog = [];
+
+  const ctx = {
+    root: document.getElementById('ctx-root'),
+    board,
+    boardEl: boardHost,
+    data: createStubData(),
+    settings: { promptStyle },
+    config: {
+      variant,
+      // Only set when the URL explicitly asks for it -- otherwise undefined, so tactics.js
+      // falls through to ctx.rating.nextTarget() (adaptive rated play), matching the shell's
+      // "honour band only when explicitly set" contract.
+      band: params.has('band') ? Number(params.get('band')) : undefined,
+      perspective,
+      framing,
+      strikes: Number(params.get('strikes')) || 3,
+      seconds: Number(params.get('seconds')) || 180,
+    },
+    ui: {
+      toast(msg) { log(`ui.toast: ${JSON.stringify(msg)}`); },
+      async confirm(opts) {
+        log(`ui.confirm: ${JSON.stringify(opts)}`);
+        return document.getElementById('confirm-toggle').checked;
+      },
+      haptic(kind) { log(`ui.haptic(${kind})`); },
+      sound(kind) { log(`ui.sound(${kind})`); },
+      // Mirrors app.js's setHeader(): a string sets a title, an Element/Fragment replaces
+      // the `[data-shell="header"]` slot's children wholesale. tactics.js only uses the
+      // Element/Fragment form (it needs a rating + streak readout setHeader's own
+      // {score,time,strikes} shape has no room for), so that's the path that matters here.
+      setHeader(spec) {
+        log(`ui.setHeader(${spec instanceof Node ? '<Node>' : JSON.stringify(spec)})`);
+        const slot = document.querySelector('[data-shell="header"]');
+        if (!slot) return;
+        if (spec == null) { slot.replaceChildren(); return; }
+        if (typeof spec === 'string') { slot.textContent = spec; return; }
+        if (spec instanceof Node) { slot.replaceChildren(spec); return; }
+      },
+    },
+    rating: {
+      get bucket() { return rating.bucketKey(bucket); },
+      get: () => rating.get(bucket),
+      nextTarget: () => rating.nextTarget(bucket),
+      record: (puzzleRating, score) => {
+        const next = rating.record(bucket, puzzleRating, score);
+        window.__statsLog.push({ kind: 'rated', bucket: rating.bucketKey(bucket), puzzleRating, score, next });
+        return next;
+      },
+    },
+    stats: {
+      record(kind, payload) {
+        log(`ctx.stats.record(${kind}, ${JSON.stringify(payload)})`);
+        window.__statsLog.push({ kind, payload });
+      },
+      query() { return []; },
+    },
+    onFinish(summary) {
+      window.__lastSummary = summary;
+      log(`ctx.onFinish: ${JSON.stringify(summary)}`);
+      document.getElementById('assert-result').textContent = `Finished: ${summary.headline}`;
+      document.getElementById('assert-result').className = 'pass';
+    },
+  };
+  window.__ctx = ctx;
+
+  const handle = createMode(ctx);
+  window.__handle = handle;
+  document.getElementById('assert-result').textContent = 'window.__handle: mounted, ready for driving';
+  document.getElementById('assert-result').className = 'pass';
+  log('Mode mounted.');
+
+  document.querySelectorAll('button.tool').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.action;
+      if (typeof handle[action] === 'function') { handle[action](); log(`handle.${action}() called`); }
+    });
+  });
+</script>
+</body>
+</html>

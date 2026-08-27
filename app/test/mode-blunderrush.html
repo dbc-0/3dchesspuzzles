@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>blunderrush.js -- mode harness</title>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+<style>
+/* Harness chrome only. Everything with a .h- prefix is test scaffolding, not the app. */
+body { background: var(--surface-inset); padding: 16px; font-family: var(--font-sans); }
+.h-wrap { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.h-device {
+  width: 393px; height: 852px; border-radius: 28px; overflow: hidden;
+  background: var(--bg); box-shadow: var(--shadow-4); flex: none;
+  --shell-height: 100%; --inset-top: 12px; --inset-bottom: 12px;
+}
+.h-side { flex: 1 1 360px; min-width: 320px; display: grid; gap: 12px; }
+.h-panel {
+  padding: 12px; border-radius: var(--radius-md);
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+}
+.h-panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); margin-bottom: 8px; }
+.h-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.h-log {
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.5;
+  white-space: pre-wrap; max-height: 420px; overflow: auto; color: var(--text-2);
+}
+.h-home { display: none; }
+</style>
+</head>
+<body>
+
+<div class="h-wrap">
+  <div class="h-device">
+    <div class="app-shell" id="shell">
+      <div class="screen" id="root"></div>
+    </div>
+  </div>
+
+  <div class="h-side">
+    <div class="h-panel">
+      <h2>Mount</h2>
+      <div class="h-row">
+        <button class="btn btn--secondary" data-mount="timed">timed</button>
+        <button class="btn btn--secondary" data-mount="survival">survival</button>
+        <button class="btn btn--secondary" data-mount="practice">practice</button>
+        <button class="btn btn--ghost" id="h-restart">restart()</button>
+        <button class="btn btn--ghost" id="h-destroy">destroy()</button>
+      </div>
+    </div>
+    <div class="h-panel">
+      <h2>Log</h2>
+      <div class="h-log" id="h-log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- The "shell" keeps the board here; the mode adopts it on mount and must give it back. -->
+<div class="h-home" id="board-home"></div>
+
+<script type="module">
+import { createBoard } from '../js/board2d.js';
+import { fenToMap, toSquare, parseSquare } from '../js/board-interface.js';
+import { seedFor } from '../js/mode-interface.js';
+import { createMode, meta } from '../js/modes/blunderrush.js';
+
+/* Test seam: a driver can jump the page's wall clock forward with H.skewClock(ms) so the
+   five-minute timer is testable without waiting five minutes. Zero skew by default. */
+const realNow = Date.now.bind(Date);
+window.__skew = 0;
+Date.now = () => realNow() + window.__skew;
+
+/* --------------------------------------------------------------------------
+   Hand-written puzzles. Both lines are legal chess, verified with chess.js.
+
+   A: black to move throughout. Quiet: 3...Nf6, 4...d5. Blunder: 5...Nxd5??
+      refuted by 6.Nxf7 Kxf7 7.Qf3+ (the classic Fried Liver).
+   B: white to move throughout. Quiet: 3.Bc4, 4.Nc3. Blunder: 5.Nxe5??
+      refuted by 5...Nxe5 6.d4 Nxc4.
+
+   chooseSequence() is a constant-hazard draw, seeded off the puzzle id, so the
+   ids below are picked to pin the sequence each fixture produces:
+     A, B  -> quiet, quiet, blunder
+     SAFE  -> quiet, quiet and then the puzzle ENDS -- no blunder at all
+     FIRST -> the very first prompt is the blunder
+   -------------------------------------------------------------------------- */
+const PUZZLES = {
+  A: {
+    i: 'brtest25', r: 1210,
+    f: 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3',
+    p: ['Nf6', 'Ng5', 'd5', 'exd5'],
+    m: ['f6d5', 'g5f7', 'e8f7', 'd1f3'],
+    d: 2, e: 15, u: 'https://lichess.org/abcdefgh', t: 'fork middlegame',
+  },
+  B: {
+    i: 'brtest32', r: 1190,
+    f: 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3',
+    p: ['Bc4', 'Bc5', 'Nc3', 'Nf6'],
+    m: ['f3e5', 'c6e5', 'd2d4', 'e5c4'],
+    d: 2, e: -10, u: 'https://lichess.org/zyxwvuts', t: 'hangingPiece opening',
+  },
+  // Same line as B, but an id whose draw comes out ALL SAFE: the run of quiet moves ends
+  // and the blunder in `m` must never be shown.
+  SAFE: {
+    i: 'brtest9', r: 1150,
+    f: 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3',
+    p: ['Bc4', 'Bc5', 'Nc3', 'Nf6'],
+    m: ['f3e5', 'c6e5', 'd2d4', 'e5c4'],
+    d: 2, e: -5, u: 'https://lichess.org/allsafe1', t: 'quiet opening',
+  },
+  // An id whose very first prompt IS the blunder.
+  FIRST: {
+    i: 'brtest0', r: 1230,
+    f: 'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3',
+    p: ['Nf6', 'Ng5', 'd5', 'exd5'],
+    m: ['f6d5', 'g5f7', 'e8f7', 'd1f3'],
+    d: 2, e: 15, u: 'https://lichess.org/first123', t: 'fork middlegame',
+  },
+  // A record the mode must reject and skip: the SAN in `p` is not legal from `f`.
+  BAD: {
+    i: 'brtestbad', r: 1200,
+    f: 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3',
+    p: ['Qz9', 'Bc5', 'Nc3', 'Nf6'],
+    m: ['f3e5', 'c6e5'],
+    d: 2, e: 0, u: '', t: '',
+  },
+};
+
+/* ---- stub data layer ---------------------------------------------------- */
+let queue = [];
+let picks = [];
+const pickTargets = [];
+const data = {
+  // An empty band at the very bottom, to prove the ramp starts at the lowest band that
+  // actually has puzzles rather than the lowest band that exists.
+  bands: [
+    { lo: 500, hi: 599, n: 0, file: 'r500.json' },
+    { lo: 600, hi: 699, n: 5, file: 'r600.json' },
+    { lo: 1100, hi: 1199, n: 2, file: 'r1100.json' },
+    { lo: 1200, hi: 1299, n: 2, file: 'r1200.json' },
+  ],
+  index: { band: 100, bands: [] },
+  async ready() { return this.index; },
+  async pick(opts) {
+    pickTargets.push({ rating: opts && opts.rating, spread: opts && opts.spread });
+    const key = queue.length ? queue.shift() : (picks.length % 2 ? 'B' : 'A');
+    picks.push(key);
+    log(`data.pick(rating=${opts && opts.rating}) -> ${key}`);
+    if (key === 'THROW') throw new Error('offline');
+    if (key === 'NULL') return null;
+    return JSON.parse(JSON.stringify(PUZZLES[key]));
+  },
+  async prefetchAround() { return []; },
+};
+
+/* ---- stub ui ------------------------------------------------------------ */
+const calls = { haptic: [], sound: [], toast: [], setHeader: [] };
+const ui = {
+  haptic(k) { calls.haptic.push(k); },
+  sound(k) { calls.sound.push(k); },
+  toast(msg, o) { calls.toast.push([msg, o && o.kind]); log(`toast: ${msg}`); },
+  confirm() { return Promise.resolve(true); },
+  setHeader(x) { calls.setHeader.push(x); },
+};
+
+/* ---- stub stats + rating engine ---------------------------------------- */
+const statRows = { };
+const stats = {
+  record(kind, payload) {
+    (statRows[kind] || (statRows[kind] = [])).push(JSON.parse(JSON.stringify(payload)));
+  },
+  query(kind) { return (statRows[kind] || []).slice(); },
+};
+
+// A deliberately crude stand-in for rating.js: enough to prove the mode serves puzzles at
+// nextTarget() and records exactly one result per puzzle.
+const ratingLog = [];
+let ratingValue = 1300;
+let forcedRating = null;   // set by H.setRating() so a test can pin the stub player's Elo
+const ratingEngine = {
+  nextTarget() { return { rating: ratingValue, spread: 90 }; },
+  record(puzzleRating, s) {
+    ratingLog.push({ puzzleRating, s });
+    ratingValue = Math.round(ratingValue + 32 * (s - (puzzleRating > ratingValue ? 0.35 : 0.65)));
+  },
+};
+
+/* ---- board -------------------------------------------------------------- */
+const boardHome = document.getElementById('board-home');
+const boardEl = document.createElement('div');
+boardEl.style.width = '100%';
+boardEl.style.height = '100%';
+boardHome.appendChild(boardEl);
+const board = createBoard(boardEl, { coordinates: true, interactive: false });
+
+// The 2D renderer has no camera seat; stand one in so the mode's feature-checked
+// randomSeat(seedFor(id)) call is observable the way the 3D board would see it.
+const seatCalls = [];
+board.randomSeat = (seed) => {
+  seatCalls.push(seed);
+  return { elevation: 20 + (seed % 30), yaw: (seed % 40) - 20, distance: 1 };
+};
+
+// The square-tap hook the board contract has just grown. Blunder Rush answers with two
+// buttons and must never install one -- this records any attempt.
+const tapHandlers = [];
+board.setSquareTapHandler = (fn) => { tapHandlers.push(fn); };
+
+/* ---- logging ------------------------------------------------------------ */
+const logEl = document.getElementById('h-log');
+const lines = [];
+function log(msg) {
+  lines.push(msg);
+  logEl.textContent = lines.slice(-120).join('\n');
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+/* ---- mount / unmount ---------------------------------------------------- */
+const root = document.getElementById('root');
+let mode = null;
+let finished = null;
+
+function mount(variant, opts) {
+  const o = opts || {};
+  unmount();
+  finished = null;
+  calls.haptic.length = calls.sound.length = calls.toast.length = calls.setHeader.length = 0;
+  seatCalls.length = 0;
+  tapHandlers.length = 0;
+  ratingLog.length = 0;
+  ratingValue = forcedRating == null ? 1300 : forcedRating;
+  for (const k of Object.keys(statRows)) delete statRows[k];
+  const ctx = {
+    root, board, boardEl, data, ui, stats,
+    rating: o.rated === false ? undefined : ratingEngine,
+    settings: {
+      rating: 1200,
+      promptStyle: o.promptStyle || 'highlight',
+      best: { timed: 3, survival: 0, practice: 0 },
+    },
+    config: { variant, band: o.band || 1200, perspective: o.perspective },
+    onFinish(summary) { finished = summary; log(`onFinish: ${JSON.stringify(summary.score)} ${summary.headline}`); },
+  };
+  mode = createMode(ctx);
+  window.H.mode = mode;
+  window.H.ctx = ctx;
+  log(`mounted ${variant}`);
+  return mode;
+}
+
+function unmount() {
+  if (mode) { mode.destroy(); mode = null; }
+  root.innerHTML = '';
+  log('unmounted');
+}
+
+/* ---- state readers used by the CDP assertions --------------------------- */
+/**
+ * Squares currently RENDERED with `kind`.
+ *
+ * The renderer now paints one glyph per square, picking the highest-precedence kind lit
+ * there (error > success > select > hint > move), so this reports the winning kind rather
+ * than raw per-kind membership -- which is exactly what a user can see, and what the
+ * assertions should be about.
+ */
+function highlightSquares(kind) {
+  const orientation = board.getOrientation();
+  return Array.from(board.el.querySelectorAll(`.b2d-hl-${kind}`)).map((node) => {
+    const m = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec(node.getAttribute('transform') || '');
+    if (!m) return null;
+    const x = Math.round(Number(m[1])), y = Math.round(Number(m[2]));
+    const file = orientation === 'black' ? 7 - x : x;
+    const rank = orientation === 'black' ? y : 7 - y;
+    return toSquare(file, rank);
+  }).filter(Boolean).sort();
+}
+
+function pieces() {
+  const out = {};
+  for (const node of board.el.querySelectorAll('.b2d-piece')) {
+    const sq = node.dataset.square;
+    if (sq && parseSquare(sq)) out[sq] = node.dataset.code;
+  }
+  return out;
+}
+
+function text(sel) {
+  const n = root.querySelector(sel);
+  return n ? n.textContent.trim() : null;
+}
+
+/**
+ * The fixed-shell guarantee, measured rather than assumed: the board must stay inside the
+ * stage, the answer buttons must stay inside the device, and nothing may become scrollable.
+ */
+function layout() {
+  const shell = document.getElementById('shell');
+  const frame = root.querySelector('.board-frame');
+  const stage = root.querySelector('.stage');
+  const answers = root.querySelector('.answers');
+  if (!shell || !frame || !stage || !answers) return null;
+  const r = (el) => el.getBoundingClientRect();
+  return {
+    boardInsideStage: r(frame).bottom <= r(stage).bottom + 1 && r(frame).top >= r(stage).top - 1,
+    answersInsideShell: r(answers).bottom <= r(shell).bottom + 1,
+    shellScrolls: shell.scrollHeight > shell.clientHeight + 1,
+    screenScrolls: root.scrollHeight > root.clientHeight + 1,
+    stageScrolls: stage.scrollHeight > stage.clientHeight + 1,
+    boardSize: Math.round(r(frame).width),
+  };
+}
+
+window.H = {
+  meta, mount, unmount, board, mode, calls, PUZZLES, seedFor,
+  get finished() { return finished; },
+  get seatCalls() { return seatCalls.slice(); },
+  get tapHandlers() { return tapHandlers.map((f) => (f === null ? 'null' : typeof f)); },
+  get ratingLog() { return ratingLog.slice(); },
+  get ratingValue() { return ratingValue; },
+  /** Force the stub engine's rating, to prove the ramp ignores it. */
+  setRating(v) { ratingValue = v; forcedRating = v; },
+  stat(kind) { return stats.query(kind); },
+  picksSeen() { return pickTargets.slice(); },
+  /** Shift the page's clock forward so the 5-minute timer can be exercised in a test. */
+  skewClock(ms) { window.__skew = (window.__skew || 0) + ms; },
+  setQueue(q) { queue = q.slice(); picks = []; pickTargets.length = 0; },
+  debug() { return mode ? mode.debug : null; },
+  state() {
+    const d = mode ? mode.debug : null;
+    return {
+      debug: d,
+      orientation: board.getOrientation(),
+      pieces: pieces(),
+      expectedPieces: d && d.fen ? fenToMap(d.fen) : null,
+      moveHighlights: highlightSquares('move'),
+      successHighlights: highlightSquares('success'),
+      errorHighlights: highlightSquares('error'),
+      hintHighlights: highlightSquares('hint'),
+      arrows: board.el.querySelectorAll('.b2d-arrow').length,
+      promptLabel: text('[data-br="prompt-label"]'),
+      promptMove: text('[data-br="move"]'),
+      ratingText: text('[data-br="rating"]'),
+      strip: (mode && mode.debug.strip) || [],
+      stripLinks: Array.from(root.querySelectorAll('[data-br="strip"] > *')).map((c) => ({
+        tag: c.tagName,
+        href: c.getAttribute('href'),
+        target: c.getAttribute('target'),
+        rel: c.getAttribute('rel'),
+        colour: getComputedStyle(c).color,
+        decoration: getComputedStyle(c).textDecorationLine,
+        height: Math.round(c.getBoundingClientRect().height),
+      })),
+      stripHidden: !!(root.querySelector('[data-br="strip"]') || {}).hidden,
+      stripScrollable: (() => {
+        const el = root.querySelector('[data-br="strip"]');
+        if (!el) return null;
+        return { classes: el.className, scrollW: el.scrollWidth, clientW: el.clientWidth };
+      })(),
+      layout: layout(),
+      ratingDelta: (root.querySelector('[data-br="rating-delta"]') || {}).hidden === false
+        ? text('[data-br="rating-delta"]') : null,
+      promptSide: (root.querySelector('[data-br="side"]') || {}).dataset
+        ? root.querySelector('[data-br="side"]').getAttribute('data-side') : null,
+      score: text('[data-br="score"]'),
+      clock: text('[data-br="clock"]'),
+      spentPips: root.querySelectorAll('.strikes__pip.is-spent').length,
+      verdict: text('.verdict'),
+      safeDisabled: !!(root.querySelector('[data-br="safe"]') || {}).disabled,
+      unsafeDisabled: !!(root.querySelector('[data-br="unsafe"]') || {}).disabled,
+      safeClass: (root.querySelector('[data-br="safe"]') || { className: '' }).className,
+      unsafeClass: (root.querySelector('[data-br="unsafe"]') || { className: '' }).className,
+      frameClass: (root.querySelector('[data-br="frame"]') || { className: '' }).className,
+      overlay: !!root.querySelector('.overlay'),
+      countdown: text('.countdown__num'),
+      boardInSlot: !!root.querySelector('[data-br="slot"] .b2d-svg'),
+      boardAtHome: boardHome.contains(boardEl),
+      actionButton: text('[data-br="actions"] .btn'),
+      finished,
+    };
+  },
+  click(which) {
+    const btn = root.querySelector(`[data-br="${which}"]`);
+    if (!btn) throw new Error('no button ' + which);
+    btn.click();
+  },
+  log,
+};
+
+for (const btn of document.querySelectorAll('[data-mount]')) {
+  btn.addEventListener('click', () => mount(btn.dataset.mount));
+}
+document.getElementById('h-restart').addEventListener('click', () => mode && mode.restart());
+document.getElementById('h-destroy').addEventListener('click', () => unmount());
+
+const params = new URLSearchParams(location.search);
+if (params.get('variant')) mount(params.get('variant'));
+window.__ready = true;
+</script>
+</body>
+</html>

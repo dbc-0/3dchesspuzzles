@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>drills.js -- mode harness</title>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+<!-- three.js resolves offline out of app/vendor/three/, same import map as app/index.html.
+     Needed here because the harness can switch the board renderer to 3D. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "../vendor/three/three.module.min.js"
+  }
+}
+</script>
+<style>
+/* Harness chrome only. Everything with a .h- prefix is test scaffolding, not the app. */
+body { background: var(--surface-inset); padding: 16px; font-family: var(--font-sans); }
+.h-wrap { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.h-device {
+  width: 393px; height: 852px; border-radius: 28px; overflow: hidden;
+  background: var(--bg); box-shadow: var(--shadow-4); flex: none;
+  --shell-height: 100%; --inset-top: 12px; --inset-bottom: 12px;
+}
+.h-side { flex: 1 1 360px; min-width: 320px; display: grid; gap: 12px; }
+.h-panel {
+  padding: 12px; border-radius: var(--radius-md);
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+}
+.h-panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); margin-bottom: 8px; }
+.h-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.h-row label { font-size: 12px; color: var(--text-2); display: inline-flex; align-items: center; gap: 4px; }
+.h-row input[type="number"] { width: 56px; }
+.h-log {
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.5;
+  white-space: pre-wrap; max-height: 420px; overflow: auto; color: var(--text-2);
+}
+.h-home { display: none; }
+</style>
+</head>
+<body>
+
+<div class="h-wrap">
+  <div class="h-device">
+    <div class="app-shell" id="shell">
+      <div class="screen screen--play" id="root"></div>
+    </div>
+  </div>
+
+  <div class="h-side">
+    <div class="h-panel">
+      <h2>Mount</h2>
+      <div class="h-row">
+        <button class="btn btn--secondary" data-mount="color">color</button>
+        <button class="btn btn--secondary" data-mount="square">square</button>
+        <button class="btn btn--secondary" data-mount="diagonal">diagonal</button>
+        <label>count <input type="number" id="h-count" value="" placeholder="(none)" min="1"></label>
+      </div>
+      <div class="h-row" style="margin-top:8px">
+        <label><input type="radio" name="h-variant" value="continuous" checked> continuous</label>
+        <label><input type="radio" name="h-variant" value="timed"> timed</label>
+        <label>seconds <input type="number" id="h-timed-seconds" value="30" min="1"></label>
+      </div>
+      <div class="h-row" style="margin-top:8px">
+        <label><input type="radio" name="h-selection-mode" value="random"> random</label>
+        <label><input type="radio" name="h-selection-mode" value="auto" checked> auto</label>
+        <label><input type="radio" name="h-selection-mode" value="emphasis"> emphasis</label>
+      </div>
+      <div class="h-row" style="margin-top:8px">
+        <button class="btn btn--ghost" id="h-restart">restart()</button>
+        <button class="btn btn--ghost" id="h-pause">pause()</button>
+        <button class="btn btn--ghost" id="h-resume">resume()</button>
+        <button class="btn btn--ghost" id="h-destroy">destroy()</button>
+        <button class="btn btn--ghost" id="h-reset-stats">reset stats</button>
+      </div>
+    </div>
+    <div class="h-panel">
+      <h2>Board renderer</h2>
+      <div class="h-row">
+        <label><input type="radio" name="h-renderer" value="2d" checked> 2D</label>
+        <label><input type="radio" name="h-renderer" value="3d"> 3D</label>
+      </div>
+    </div>
+    <div class="h-panel">
+      <h2>Log</h2>
+      <div class="h-log" id="h-log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Off-DOM home for the renderer between mounts, mirroring app.js: the real shell fully
+     destroys and recreates the board every play session (see drills.js's destroy()), so
+     nothing here needs to be "given back" -- this is just where a fresh board is built. -->
+<div class="h-home" id="board-home"></div>
+
+<script type="module">
+import { createBoard as createBoard2d } from '../js/board2d.js';
+import { toSquare, parseSquare } from '../js/board-interface.js';
+import { seedFor } from '../js/mode-interface.js';
+import { createMode, meta } from '../js/modes/drills.js';
+
+/* --------------------------------------------------------------------------
+   BOARD
+   Mirrors app.js's `createBoardHandle()` wrapper shape as closely as a
+   synchronous, single-renderer harness can: `.raw()` returns the real
+   board2d/board3d handle (drills.js reaches through it for
+   `setSquareTapHandler`, since the real wrapper doesn't forward that method
+   yet -- see drills.js's file header), and setSeat/setView/setOrientation/
+   highlight/etc. all delegate straight through. Switchable 2D/3D via the
+   radio buttons so the harness can exercise both renderers' tap-picking and
+   (for 3D) setSeat/setView paths. Only the 'square' drill ever touches this.
+   -------------------------------------------------------------------------- */
+const boardHome = document.getElementById('board-home');
+let inner = null;
+let rendererKind = '2d';
+
+async function buildInner() {
+  const mod = rendererKind === '3d' ? await import('../js/board3d.js') : Promise.resolve({ createBoard: createBoard2d });
+  const resolved = await mod;
+  const el = document.createElement('div');
+  el.style.width = '100%';
+  el.style.height = '100%';
+  boardHome.appendChild(el);
+  return { handle: resolved.createBoard(el, { coordinates: false, interactive: false }), el };
+}
+
+let boardWrap = null; // { handle, el }
+boardWrap = await buildInner();
+inner = boardWrap.handle;
+
+const board = {
+  raw: () => inner,
+  setPosition(fen, o) { return inner.setPosition(fen, o); },
+  animateMove(f, t, o) { return inner.animateMove(f, t, o); },
+  setOrientation(side) { return inner.setOrientation(side); },
+  getOrientation() { return inner.getOrientation(); },
+  highlight(sq, kind) { return inner.highlight(sq, kind); },
+  clearHighlights(kind) { return inner.clearHighlights(kind); },
+  arrow(f, t, kind) { return inner.arrow(f, t, kind); },
+  clearArrows() { return inner.clearArrows(); },
+  flash(kind) { return inner.flash(kind); },
+  resize() { return inner.resize(); },
+  setSeat(seat, o) { return typeof inner.setSeat === 'function' ? inner.setSeat(seat, o) : null; },
+  setView(view) { return typeof inner.setView === 'function' ? inner.setView(view) : null; },
+};
+
+/* ctx.boardEl mirrors app.js's shape exactly: `.board-area > .board-frame > .board-slot`,
+   with the live renderer's element inside `.board-slot`. The 'square' drill drops this
+   whole node into its own `.stage`; 'color'/'diagonal' must never touch it at all -- the
+   harness never appends it anywhere itself, so if it ends up in `root` that's drills.js
+   having inserted it (a bug for those two drills, per the file header's integration note 3). */
+function freshBoardEl() {
+  const wrap = document.createElement('div');
+  wrap.className = 'board-area';
+  const frame = document.createElement('div');
+  frame.className = 'board-frame';
+  const slot = document.createElement('div');
+  slot.className = 'board-slot';
+  slot.appendChild(boardWrap.el);
+  frame.appendChild(slot);
+  wrap.appendChild(frame);
+  return wrap;
+}
+
+async function swapRenderer(kind) {
+  if (kind === rendererKind) return;
+  rendererKind = kind;
+  const old = boardWrap;
+  boardWrap = await buildInner();
+  inner = boardWrap.handle;
+  try { old.handle.destroy(); } catch { /* ignore */ }
+  old.el.remove();
+  log(`renderer swapped -> ${kind}`);
+}
+
+for (const radio of document.querySelectorAll('input[name="h-renderer"]')) {
+  radio.addEventListener('change', (ev) => { if (ev.target.checked) swapRenderer(ev.target.value); });
+}
+
+/* ---- logging ------------------------------------------------------------ */
+const logEl = document.getElementById('h-log');
+const lines = [];
+function log(msg) {
+  lines.push(msg);
+  logEl.textContent = lines.slice(-160).join('\n');
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+/* ---- stub ui -------------------------------------------------------------
+   confirm() auto-accepts (after a tick) so automated drivers never block on a
+   sheet; every call is still logged and counted for assertions. */
+const calls = { haptic: [], sound: [], toast: [], setHeader: [], confirm: [] };
+const ui = {
+  haptic(k) { calls.haptic.push(k); },
+  sound(k) { calls.sound.push(k); },
+  toast(msg, o) { calls.toast.push([msg, o && o.kind]); log(`toast: ${msg}`); },
+  confirm(opts) {
+    calls.confirm.push(opts);
+    log(`confirm: ${opts && opts.title}`);
+    return Promise.resolve(true);
+  },
+  setHeader(x) { calls.setHeader.push(x); },
+};
+
+/* ---- stub stats ------------------------------------------------------------
+   {record(kind, payload), query(kind)} per mode-interface.js. This is a PERSISTENT
+   in-memory store across mount()/unmount() cycles -- deliberately NOT cleared per
+   mount, because drills.js's whole differentiator (per-square weighting, the weak-
+   squares sheet) depends on stats accumulating across sessions the way the real
+   localStorage-backed store does. Call window.H.resetStats() to start clean. */
+let statsRecords = [];
+const stats = {
+  record(kind, payload) {
+    const entry = { kind, payload, t: Date.now() };
+    statsRecords.push(entry);
+    log(`stats.record(${kind}): ${JSON.stringify(payload)}`);
+    return entry;
+  },
+  query(kind) { return statsRecords.filter((r) => r.kind === kind).map((r) => ({ ...r.payload, t: r.t })); },
+};
+
+/* ---- mount / unmount ------------------------------------------------------ */
+const root = document.getElementById('root');
+let mode = null;
+let finished = null;
+
+/**
+ * `opts` mirrors `ctx.config` fields drills.js reads: {variant, selectionMode,
+ * timedSeconds, count}. IMPORTANT: none of these are set unless explicitly passed in
+ * `opts` -- app.js's real `renderPlay()` never sets `config.count` at all, and doesn't
+ * yet set `config.variant`/`config.selectionMode` either (see the file header's
+ * INTEGRATION NOTE 4). A harness that always filled in a default `count` is exactly what
+ * let the "ends after one question" bug slip through before: it never exercised the
+ * actual production ctx.config shape. Bug-regression tests must call `mount(drill)` /
+ * `mount(drill, {})` with no count, same as production.
+ */
+function mount(drill, opts = {}) {
+  unmount();
+  finished = null;
+  calls.haptic.length = calls.sound.length = calls.toast.length = calls.confirm.length = 0;
+  const boardEl = freshBoardEl();
+  const config = { drill };
+  if (opts.variant) config.variant = opts.variant;
+  if (opts.selectionMode) config.selectionMode = opts.selectionMode;
+  if (opts.timedSeconds != null) config.timedSeconds = opts.timedSeconds;
+  if (opts.count != null) config.count = opts.count;
+  const ctx = {
+    root, board, boardEl,
+    data: { async ready() { return null; }, async pick() { return null; } },
+    settings: { rating: 1400, board: rendererKind, coordinates: false },
+    config,
+    ui, stats,
+    onFinish(summary) {
+      finished = summary;
+      log(`onFinish: score=${summary.score} history=${summary.history.length} :: ${summary.headline}`);
+    },
+  };
+  mode = createMode(ctx);
+  window.H.ctx = ctx;
+  // Mirrors app.js's `adoptChrome()`: a mode that renders no app bar of its own gets
+  // the shell's. Without this, `.screen`'s 3-row grid (auto / 1fr / auto) has only 2
+  // children -- `.stage` lands in the "auto" row and `.action-bar` in the "1fr" row,
+  // which collapses the board to near-zero size. Real app.js always does this before
+  // `mountScreen()`; this harness must too, or the layout under test is not the one
+  // that actually ships.
+  if (!root.querySelector('.app-bar')) {
+    const bar = document.createElement('header');
+    bar.className = 'app-bar';
+    root.prepend(bar);
+  }
+  log(`mounted drill=${drill} config=${JSON.stringify(config)}`);
+  return mode;
+}
+
+function unmount() {
+  if (mode) { mode.destroy(); mode = null; }
+  root.replaceChildren();
+  log('unmounted');
+}
+
+/* ---- state readers used by the CDP assertions -----------------------------
+   board2d.js renders highlights into a SINGLE `.b2d-layer-highlights` group:
+   membership is tracked per-kind internally, but renderHighlights() derives the one
+   winning kind per square (error > success > select > hint > move) fresh on every
+   call and draws exactly one `<g class="b2d-hl b2d-hl-<kind>">` per lit square.
+   renderedHighlights() reads what is ACTUALLY drawn, square by square. */
+function renderedHighlights() {
+  const layer = inner.el && inner.el.querySelector ? inner.el.querySelector('.b2d-layer-highlights') : null;
+  const out = {};
+  if (!layer) return out;
+  const orientation = board.getOrientation();
+  for (const node of layer.children) {
+    const kindClass = Array.from(node.classList || []).find((c) => c.startsWith('b2d-hl-'));
+    if (!kindClass) continue;
+    const kind = kindClass.slice('b2d-hl-'.length);
+    const m = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec(node.getAttribute('transform') || '');
+    if (!m) continue;
+    const x = Math.round(Number(m[1])), y = Math.round(Number(m[2]));
+    const file = orientation === 'black' ? 7 - x : x;
+    const rank = orientation === 'black' ? y : 7 - y;
+    out[toSquare(file, rank)] = kind;
+  }
+  return out;
+}
+
+function highlightSquares(kind) {
+  const rendered = renderedHighlights();
+  return Object.keys(rendered).filter((sq) => rendered[sq] === kind).sort();
+}
+
+function text(sel) {
+  const n = root.querySelector(sel);
+  return n ? n.textContent.trim() : null;
+}
+
+/** Screen-space centre of `square`, in VIEWPORT coordinates, matching board2d.js's own
+ *  squareToXY/svgPointFromEvent maths exactly -- used by the Node driver to dispatch a real
+ *  mouse click at the right spot via CDP (Input.dispatchMouseEvent / page.mouse). */
+function squareCenter(square) {
+  const svg = inner.el && inner.el.querySelector ? inner.el.querySelector('.b2d-svg') : null;
+  if (!svg) return null;
+  const p = parseSquare(square);
+  if (!p) return null;
+  const orientation = board.getOrientation();
+  const ux = orientation === 'black' ? 7 - p.file : p.file;
+  const uy = orientation === 'black' ? p.rank : 7 - p.rank;
+  const rect = svg.getBoundingClientRect();
+  return {
+    x: rect.left + ((ux + 0.5) / 8) * rect.width,
+    y: rect.top + ((uy + 0.5) / 8) * rect.height,
+  };
+}
+
+/** Reads the live weak-squares sheet, if open: which squares are visually included
+ *  (border/opacity state), each cell's rendered background colour and its title
+ *  (tooltip) text -- so a test can assert the heatmap actually reflects real per-square
+ *  data, not just that a grid of 64 buttons exists. */
+function sheetState() {
+  const sheet = root.querySelector('[data-role="weak-squares-sheet"]');
+  if (!sheet) return null;
+  const cells = {};
+  for (const cell of sheet.querySelectorAll('[data-square]')) {
+    cells[cell.dataset.square] = {
+      background: cell.style.background,
+      color: cell.style.color,
+      included: cell.getAttribute('aria-pressed') === 'true',
+      title: cell.title,
+    };
+  }
+  return {
+    applyLabel: text('[data-role="sheet-apply"]'),
+    applyDisabled: !!(sheet.querySelector('[data-role="sheet-apply"]') || {}).disabled,
+    cells,
+  };
+}
+
+window.H = {
+  meta, mount, unmount, board, calls, seedFor, stats,
+  get mode() { return mode; },
+  get finished() { return finished; },
+  get statsRecords() { return statsRecords.map((r) => ({ ...r })); },
+  resetStats() { statsRecords = []; log('stats reset'); },
+  get renderer() { return rendererKind; },
+  swapRenderer,
+  debug() { return mode ? mode.debug : null; },
+  state() {
+    const d = mode ? mode.debug : null;
+    return {
+      debug: d,
+      renderer: rendererKind,
+      orientation: board.getOrientation(),
+      renderedHighlights: renderedHighlights(),
+      moveHighlights: highlightSquares('move'),
+      successHighlights: highlightSquares('success'),
+      errorHighlights: highlightSquares('error'),
+      hintHighlights: highlightSquares('hint'),
+      promptLabel: text('.prompt__label'),
+      promptMove: text('.prompt__move'),
+      blindEyebrow: text('.blindfold__eyebrow'),
+      blindMoves: text('.blindfold__moves'),
+      blindHint: text('.blindfold__hint'),
+      metaTimer: text('.stage__meta > span:nth-child(1)'),
+      metaAccuracy: text('.stage__meta > span:nth-child(3)'),
+      metaStreak: text('.stage__meta-streak'),
+      answersHidden: (root.querySelector('.answers') || {}).hidden,
+      answerButtons: Array.from(root.querySelectorAll('.answers .answer')).map((b) => ({
+        text: b.textContent.trim(), choice: b.dataset.choice, className: b.className, disabled: b.disabled,
+      })),
+      hintText: text('.action-bar .stage__meta'),
+      boardInStage: !!root.querySelector('.stage .board-slot .b2d-svg, .stage .board-slot canvas'),
+      boardElPresentAnywhereInRoot: !!(boardWrap && root.contains(boardWrap.el)),
+      sheetOpen: !!root.querySelector('[data-role="weak-squares-sheet"]'),
+      finished,
+    };
+  },
+  sheetState,
+  squareCenter,
+  renderedHighlights,
+  highlightSquares,
+  // Bypass real pointer dispatch -- calls whatever handler drills.js currently has armed
+  // (snooped via the board.raw() wrap below) exactly the way the renderer would after a
+  // genuine tap. A second, independent path alongside the real-pointer-dispatch test.
+  tapSquareDirect(sq) {
+    return armedTapHandler ? armedTapHandler(sq) : false;
+  },
+  log,
+};
+
+// Snoop the handler drills.js installs, so tapSquareDirect() and CDP-driven assertions can
+// invoke it without needing real pointer geometry (useful for the 3D renderer, and as a
+// second, independent path alongside the real-pointer-dispatch test for 2D).
+let armedTapHandler = null;
+(function wrapTapInstall() {
+  const origRaw = board.raw;
+  board.raw = () => {
+    const r = origRaw();
+    if (r && typeof r.setSquareTapHandler === 'function' && !r.__hWrapped) {
+      const orig = r.setSquareTapHandler.bind(r);
+      r.setSquareTapHandler = (fn) => { armedTapHandler = fn; orig(fn); };
+      r.__hWrapped = true;
+    }
+    return r;
+  };
+})();
+
+for (const btn of document.querySelectorAll('[data-mount]')) {
+  btn.addEventListener('click', () => {
+    const opts = {};
+    const variant = (document.querySelector('input[name="h-variant"]:checked') || {}).value;
+    if (variant && variant !== 'continuous') opts.variant = variant;
+    const selectionMode = (document.querySelector('input[name="h-selection-mode"]:checked') || {}).value;
+    if (selectionMode && selectionMode !== 'auto') opts.selectionMode = selectionMode;
+    const seconds = Number(document.getElementById('h-timed-seconds').value);
+    if (seconds > 0) opts.timedSeconds = seconds;
+    const count = Number(document.getElementById('h-count').value);
+    if (count > 0) opts.count = count;
+    mount(btn.dataset.mount, opts);
+  });
+}
+document.getElementById('h-restart').addEventListener('click', () => mode && mode.restart());
+document.getElementById('h-pause').addEventListener('click', () => mode && mode.pause());
+document.getElementById('h-resume').addEventListener('click', () => mode && mode.resume());
+document.getElementById('h-destroy').addEventListener('click', () => unmount());
+document.getElementById('h-reset-stats').addEventListener('click', () => window.H.resetStats());
+
+const params = new URLSearchParams(location.search);
+if (params.get('drill')) mount(params.get('drill'));
+window.__ready = true;
+</script>
+</body>
+</html>

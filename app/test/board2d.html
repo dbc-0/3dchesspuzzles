@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>board2d.js -- test harness</title>
+<style>
+  :root {
+    /* Stand-in values for the TOKENS the design system will eventually own. board2d.js
+       also carries its own internal fallbacks, so this page would still render (just with
+       different defaults) even if this block were deleted entirely. */
+    --board-light: #eeeed2;
+    --board-dark: #6f9150;
+    --board-edge: #34301f;
+    --hl-move: rgba(255, 221, 64, 0.55);
+    --hl-select: rgba(32, 145, 255, 0.6);
+    --hl-error: rgba(224, 64, 64, 0.6);
+    --hl-success: rgba(46, 184, 110, 0.6);
+    --hl-hint: rgba(255, 160, 30, 0.65);
+    --arrow: rgba(20, 20, 20, 0.85);
+    --piece-white: #fbfbf5;
+    --piece-black: #22201c;
+    --board-coord-on-light: #33331a;
+    --board-coord-on-dark: #f5f8ee;
+
+    --bg: #1c1c1e;
+    --panel: #262629;
+    --text: #f2f2f2;
+    --muted: #9a9a9e;
+    --accent: #4c8dff;
+    --ok: #3ecf8e;
+    --bad: #e5534b;
+    --border: #3a3a3e;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f4f5;
+      --panel: #ffffff;
+      --text: #1c1c1e;
+      --muted: #626266;
+      --border: #dcdce0;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  body { padding: 16px; padding-bottom: 48px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 18px 0 8px; }
+  p.sub { color: var(--muted); margin: 0 0 16px; font-size: 13px; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(240px, 420px) 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  #board-container {
+    width: 100%;
+    max-width: 420px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--panel);
+    transition: max-width 200ms ease;
+  }
+  #board-container.narrow { max-width: 220px; }
+
+  #status-line {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 6px 14px;
+  }
+  #status-line b { color: var(--text); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+
+  button {
+    font: inherit;
+    padding: 6px 11px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #333338;
+    color: var(--text);
+    cursor: pointer;
+  }
+  @media (prefers-color-scheme: light) {
+    button { background: #eceef1; }
+  }
+  button:hover { border-color: var(--accent); }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+
+  #assert-result {
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 12px;
+  }
+  #assert-result.pass { background: rgba(62, 207, 142, 0.18); color: var(--ok); }
+  #assert-result.fail { background: rgba(229, 83, 75, 0.18); color: var(--bad); }
+
+  #log {
+    height: 220px;
+    overflow-y: auto;
+    background: #000;
+    color: #9dffb0;
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  #log .err { color: #ff8a80; }
+  #log .warn { color: #ffd479; }
+  #log div { white-space: pre-wrap; word-break: break-word; }
+</style>
+</head>
+<body>
+
+<h1>board2d.js test harness</h1>
+<p class="sub">Standalone, offline exercise of the BoardHandle contract in board-interface.js. No build step; opened directly as a file or served statically.</p>
+
+<div id="assert-result">assertBoardHandle: pending&hellip;</div>
+
+<div class="layout">
+  <div>
+    <div id="board-container"></div>
+    <div id="status-line">
+      <span>orientation: <b id="stat-orientation">-</b></span>
+      <span>interactive: <b id="stat-interactive">-</b></span>
+      <span>selected/last move: <b id="stat-move">-</b></span>
+      <span>square-tap handler: <b id="stat-tap-active">-</b></span>
+      <span>last square tap: <b id="stat-tap">-</b></span>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Position</h2>
+      <div class="row">
+        <button data-action="pos-start">Start position</button>
+        <button data-action="pos-midgame">Midgame FEN</button>
+        <button data-action="pos-endgame">K+P endgame</button>
+        <button data-action="pos-start-animate">Start position (animated)</button>
+      </div>
+
+      <h2>animateMove (slides one piece, fen reconciles the rest)</h2>
+      <div class="row">
+        <button data-action="move-e2e4">e2-e4</button>
+        <button data-action="move-promo">Promotion: g7-g8=Q</button>
+        <button data-action="move-castle">Castling: e1-g1 (O-O)</button>
+        <button data-action="move-ep">En passant: e5xf6</button>
+      </div>
+
+      <h2>setPosition({animate:true}) diffing</h2>
+      <div class="row">
+        <button data-action="diff-castle">Jump straight to post-castle FEN</button>
+      </div>
+
+      <h2>Orientation</h2>
+      <div class="row">
+        <button data-action="flip">Flip orientation</button>
+      </div>
+
+      <h2>Highlights</h2>
+      <div class="row">
+        <button data-action="hl-move">move</button>
+        <button data-action="hl-select">select</button>
+        <button data-action="hl-error">error</button>
+        <button data-action="hl-success">success</button>
+        <button data-action="hl-hint">hint</button>
+        <button data-action="hl-clear">clear all</button>
+      </div>
+
+      <h2>Highlight precedence / overlap (one glyph per square)</h2>
+      <p class="sub" style="margin:0 0 8px;">board-interface.js: error &gt; success &gt; select &gt; hint &gt; move. A square lit by several kinds at once must render exactly one glyph -- the highest-precedence kind's fill+glyph together, never a mix or a stack. Membership is tracked per kind (highlight(squares, kind) REPLACES that kind's whole square list), so this setup makes one highlight() call per kind listing every square that kind should cover, rather than one call per square -- calling highlight() square-by-square for the same kind would just overwrite itself.</p>
+      <div class="row">
+        <button data-action="ov-setup">Set up overlap matrix on b5&ndash;f5</button>
+        <button data-action="ov-clear-hint">clearHighlights('hint') only (fallback test: b5/c5 should drop to 'move')</button>
+        <button data-action="ov-clear">Clear overlap demo squares</button>
+      </div>
+      <p class="sub" style="margin:4px 0 8px;">Matrix: b5 move+hint (expect hint) &middot; c5 move+hint (expect hint) &middot; f5 move+hint+select (expect select) &middot; e5 move+hint+select+success (expect success) &middot; d5 all five incl. error (expect error). After clearing hint: b5 and c5 fall back to move; f5/e5/d5 unaffected.</p>
+
+      <h2>Arrows</h2>
+      <div class="row">
+        <button data-action="arrow-default">e2 &rarr; e4</button>
+        <button data-action="arrow-hint">g1 &rarr; f3 (hint colour)</button>
+        <button data-action="arrow-multi">add b1&rarr;c3 too</button>
+        <button data-action="arrow-clear">clear arrows</button>
+      </div>
+
+      <h2>Flash</h2>
+      <div class="row">
+        <button data-action="flash-success">flash success</button>
+        <button data-action="flash-error">flash error</button>
+        <button data-action="flash-rapid">rapid-fire x5 (safety check)</button>
+      </div>
+
+      <h2>Interaction</h2>
+      <div class="row">
+        <button data-action="toggle-interactive">Toggle interactive</button>
+        <label class="inline"><input type="checkbox" id="reject-toggle"> reject next onMove (snap back)</label>
+      </div>
+
+      <h2>Square tap (independent of interactive)</h2>
+      <p class="sub" style="margin:0 0 8px;">Tap/click any square -- including empty ones -- to see it reported below, whether or not "interactive" is on. Use the toggle to confirm setSquareTapHandler(null) stops it.</p>
+      <div class="row">
+        <button data-action="toggle-square-tap">Toggle square-tap handler</button>
+      </div>
+
+      <h2>Resize / lifecycle</h2>
+      <div class="row">
+        <button data-action="toggle-narrow">Toggle container width</button>
+        <button data-action="force-resize">Call resize()</button>
+        <button data-action="destroy" class="danger">destroy()</button>
+        <button data-action="recreate" class="primary">Recreate board</button>
+      </div>
+    </div>
+
+    <h2>Log</h2>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { createBoard } from '../js/board2d.js';
+  import { assertBoardHandle, START_FEN } from '../js/board-interface.js';
+
+  const FENS = {
+    start: START_FEN,
+    midgame: 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3',
+    endgame: '8/8/8/4k3/8/4K3/4P3/8 w - - 0 1',
+
+    promoBefore: '8/6P1/8/8/4k3/8/4K3/8 w - - 0 1',
+    promoAfter: '6Q1/8/8/8/4k3/8/4K3/8 b - - 0 1',
+
+    castleBefore: 'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1',
+    castleAfter: 'r3k2r/8/8/8/8/8/8/R4RK1 b kq - 1 1',
+
+    epBefore: 'rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3',
+    epAfter: 'rnbqkbnr/ppp1p1pp/5P2/3p4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3',
+  };
+
+  const logEl = document.getElementById('log');
+  function log(msg, kind) {
+    const line = document.createElement('div');
+    if (kind) line.className = kind;
+    const t = new Date().toISOString().split('T')[1].replace('Z', '');
+    line.textContent = `[${t}] ${msg}`;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+    // eslint-disable-next-line no-console
+    console.log(msg);
+  }
+
+  window.addEventListener('error', (e) => log(`window error: ${e.message}`, 'err'));
+  window.addEventListener('unhandledrejection', (e) => log(`unhandled rejection: ${e.reason}`, 'err'));
+
+  const container = document.getElementById('board-container');
+  const statOrientation = document.getElementById('stat-orientation');
+  const statInteractive = document.getElementById('stat-interactive');
+  const statMove = document.getElementById('stat-move');
+  const statTapActive = document.getElementById('stat-tap-active');
+  const statTap = document.getElementById('stat-tap');
+  const rejectToggle = document.getElementById('reject-toggle');
+  const assertResultEl = document.getElementById('assert-result');
+
+  let handle = null;
+  let interactiveState = true;
+  let squareTapActive = true;
+
+  function onSquareTap(square) {
+    statTap.textContent = square;
+    log(`onSquareTap(${square})`);
+  }
+
+  function onMove(from, to) {
+    if (rejectToggle.checked) {
+      log(`onMove(${from}, ${to}) -> rejecting (snap back)`, 'warn');
+      statMove.textContent = `${from}-${to} (rejected)`;
+      return false;
+    }
+    log(`onMove(${from}, ${to}) -> accepted`);
+    statMove.textContent = `${from}-${to}`;
+    return true;
+  }
+
+  function mount() {
+    handle = createBoard(container, {
+      position: FENS.start,
+      orientation: 'white',
+      coordinates: true,
+      interactive: interactiveState,
+      onMove,
+      // exercise the constructor-option path; the toggle button below exercises the
+      // runtime setSquareTapHandler(fn|null) path on top of this.
+      onSquareTap: squareTapActive ? onSquareTap : null,
+    });
+
+    try {
+      assertBoardHandle(handle);
+      assertResultEl.textContent = 'assertBoardHandle: PASS -- handle satisfies BoardHandle';
+      assertResultEl.className = 'pass';
+      log('assertBoardHandle passed.');
+    } catch (err) {
+      assertResultEl.textContent = `assertBoardHandle: FAIL -- ${err.message}`;
+      assertResultEl.className = 'fail';
+      log(`assertBoardHandle FAILED: ${err.message}`, 'err');
+    }
+
+    refreshStatus();
+    setButtonsEnabled(true);
+    log('Board mounted.');
+  }
+
+  function refreshStatus() {
+    if (!handle) return;
+    statOrientation.textContent = handle.getOrientation();
+    statInteractive.textContent = String(interactiveState);
+    statTapActive.textContent = squareTapActive ? 'installed' : 'cleared';
+  }
+
+  function setButtonsEnabled(enabled) {
+    document.querySelectorAll('button[data-action]').forEach((btn) => {
+      if (btn.dataset.action === 'recreate') { btn.disabled = enabled; return; }
+      if (btn.dataset.action === 'destroy') { btn.disabled = !enabled; return; }
+      btn.disabled = !enabled;
+    });
+  }
+
+  const actions = {
+    'pos-start': async () => { await handle.setPosition(FENS.start); log('setPosition(start)'); },
+    'pos-midgame': async () => { await handle.setPosition(FENS.midgame); log('setPosition(midgame)'); },
+    'pos-endgame': async () => { await handle.setPosition(FENS.endgame); log('setPosition(endgame)'); },
+    'pos-start-animate': async () => {
+      await handle.setPosition(FENS.midgame, { animate: false });
+      await handle.setPosition(FENS.start, { animate: true });
+      log('setPosition(start, {animate:true}) from midgame');
+    },
+
+    'move-e2e4': async () => {
+      await handle.setPosition(FENS.start, { animate: false });
+      await handle.animateMove('e2', 'e4');
+      log('animateMove(e2,e4) done');
+    },
+    'move-promo': async () => {
+      await handle.setPosition(FENS.promoBefore, { animate: false });
+      await handle.animateMove('g7', 'g8', { fen: FENS.promoAfter });
+      log('animateMove(g7,g8,{fen: promoAfter}) done -- pawn should now read as a queen');
+    },
+    'move-castle': async () => {
+      await handle.setPosition(FENS.castleBefore, { animate: false });
+      await handle.animateMove('e1', 'g1', { fen: FENS.castleAfter });
+      log('animateMove(e1,g1,{fen: castleAfter}) done -- rook should have jumped h1-f1 too');
+    },
+    'move-ep': async () => {
+      await handle.setPosition(FENS.epBefore, { animate: false });
+      await handle.animateMove('e5', 'f6', { fen: FENS.epAfter });
+      log('animateMove(e5,f6,{fen: epAfter}) done -- captured pawn on f5 should be gone');
+    },
+
+    'diff-castle': async () => {
+      await handle.setPosition(FENS.castleBefore, { animate: false });
+      await handle.setPosition(FENS.castleAfter, { animate: true });
+      log('setPosition(castleAfter, {animate:true}) done -- king AND rook should both have slid');
+    },
+
+    flip: () => {
+      const next = handle.getOrientation() === 'white' ? 'black' : 'white';
+      handle.setOrientation(next);
+      refreshStatus();
+      log(`setOrientation(${next})`);
+    },
+
+    'hl-move': () => { handle.highlight(['e2', 'e4'], 'move'); log('highlight([e2,e4], move)'); },
+    'hl-select': () => { handle.highlight(['d4'], 'select'); log('highlight([d4], select)'); },
+    'hl-error': () => { handle.highlight(['h7'], 'error'); log('highlight([h7], error)'); },
+    'hl-success': () => { handle.highlight(['a2', 'a3', 'a4'], 'success'); log('highlight([a2,a3,a4], success)'); },
+    'hl-hint': () => { handle.highlight(['g1', 'f3'], 'hint'); log('highlight([g1,f3], hint)'); },
+    'hl-clear': () => { handle.clearHighlights(); log('clearHighlights()'); },
+
+    // Precedence/overlap regression coverage for board-interface.js's ONE GLYPH PER SQUARE
+    // rule: error > success > select > hint > move.
+    //
+    // highlight(squares, kind) REPLACES that kind's whole square list (it is not additive),
+    // so to build several *different* overlaps at once, each kind gets exactly one
+    // highlight() call listing every square that kind should cover -- not one call per
+    // square, which would just have each new call stomp the previous square out of that
+    // kind's membership.
+    'ov-setup': () => {
+      handle.highlight(['b5', 'c5', 'd5', 'e5', 'f5'], 'move');   // ambient, present everywhere
+      handle.highlight(['b5', 'c5', 'd5', 'e5', 'f5'], 'hint');   // present everywhere too
+      handle.highlight(['d5', 'e5', 'f5'], 'select');
+      handle.highlight(['d5', 'e5'], 'success');
+      handle.highlight(['d5'], 'error');
+      log('overlap matrix set: b5/c5 move+hint (expect hint), f5 +select (expect select), '
+        + 'e5 +success (expect success), d5 +error (expect error) -- exactly one glyph per square');
+    },
+    'ov-clear-hint': () => {
+      handle.clearHighlights('hint');
+      log("clearHighlights('hint') -- b5 and c5 (which had only move+hint) should now fall back "
+        + "to their still-lit 'move' fill, not go blank; d5/e5/f5 unaffected since their winning "
+        + "kind was never hint");
+    },
+    'ov-clear': () => {
+      handle.clearHighlights();
+      log('clearHighlights() -- overlap demo squares cleared');
+    },
+
+    'arrow-default': () => { handle.arrow('e2', 'e4'); log('arrow(e2,e4)'); },
+    'arrow-hint': () => { handle.arrow('g1', 'f3', 'hint'); log("arrow(g1,f3,'hint')"); },
+    'arrow-multi': () => { handle.arrow('b1', 'c3', 'success'); log("arrow(b1,c3,'success') added alongside existing arrows"); },
+    'arrow-clear': () => { handle.clearArrows(); log('clearArrows()'); },
+
+    'flash-success': () => { handle.flash('success'); log("flash('success')"); },
+    'flash-error': () => { handle.flash('error'); log("flash('error')"); },
+    'flash-rapid': () => {
+      log("flash('success') x5 rapid-fire -- must not throw or stack oddly");
+      for (let i = 0; i < 5; i++) setTimeout(() => handle.flash(i % 2 ? 'success' : 'error'), i * 40);
+    },
+
+    'toggle-interactive': () => {
+      interactiveState = !interactiveState;
+      handle.setInteractive(interactiveState);
+      refreshStatus();
+      log(`setInteractive(${interactiveState})`);
+    },
+
+    'toggle-square-tap': () => {
+      squareTapActive = !squareTapActive;
+      handle.setSquareTapHandler(squareTapActive ? onSquareTap : null);
+      refreshStatus();
+      log(`setSquareTapHandler(${squareTapActive ? 'onSquareTap' : 'null'})`);
+    },
+
+    'toggle-narrow': () => {
+      container.classList.toggle('narrow');
+      log('toggled container width (ResizeObserver should keep the board square)');
+    },
+    'force-resize': () => { handle.resize(); log('resize()'); },
+
+    destroy: () => {
+      handle.destroy();
+      log('destroy() called -- container emptied, listeners removed');
+      setButtonsEnabled(false);
+      assertResultEl.textContent = 'assertBoardHandle: (board destroyed)';
+      assertResultEl.className = '';
+    },
+    recreate: () => {
+      log('recreating board from scratch (mount/unmount cycle)');
+      mount();
+    },
+  };
+
+  document.querySelectorAll('button[data-action]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      try {
+        const r = actions[btn.dataset.action]();
+        if (r && typeof r.catch === 'function') r.catch((err) => log(`action error: ${err.message}`, 'err'));
+      } catch (err) {
+        log(`action error: ${err.message}`, 'err');
+      }
+    });
+  });
+
+  mount();
+</script>
+</body>
+</html>

@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>board3d.js -- contract harness</title>
+<link rel="icon" href="data:,"><!-- keeps the console clean of a favicon 404 -->
+
+<!--
+  Standalone harness. No build step, no CDN: three.js resolves through the
+  import map below straight out of app/vendor/three/.
+
+  Serve the repo over http (ES modules will not load from file://):
+      python3 -m http.server 8000
+      open http://localhost:8000/app/test/board3d.html
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "../vendor/three/three.module.min.js"
+  }
+}
+</script>
+
+<style>
+  /* The design system owns these for real; the harness just supplies values so
+     the page stands alone and so we can prove the renderer reads them. */
+  /* These are copied verbatim from app/css/tokens.css so the harness measures
+     the set the app actually ships, not a lookalike. */
+  :root {
+    --board-light: #e0c8a2;
+    --board-dark:  #a3835d;
+    --board-edge:  #6f5638;
+    /* Mirrors app/css/tokens.css: the real highlight tokens carry alpha. */
+    --hl-move:     rgba(240, 178, 34, 0.55);
+    --hl-select:   rgba(47, 104, 224, 0.45);
+    --hl-error:    rgba(216, 55, 47, 0.55);
+    --hl-success:  rgba(15, 157, 99, 0.50);
+    --hl-hint:     rgba(139, 79, 214, 0.45);
+    --arrow:       rgba(232, 150, 20, 0.88);
+    --piece-white: #fbfaf7;
+    --piece-black: #40352b;
+    --board-coord-on-light: #5c4526;
+    --board-coord-on-dark:  #faf2e2;
+
+    --ui-bg: #14161a;
+    --ui-fg: #e8eaee;
+    --ui-panel: #1e2128;
+    --ui-line: #333844;
+  }
+  /* tokens.css dark theme: a cool slate set. */
+  :root.alt-theme {
+    --board-light: #c3ced9;
+    --board-dark:  #6b8093;
+    --board-edge:  #1e262e;
+    --hl-move:    rgba(255, 205, 70, 0.52);
+    --hl-select:  rgba(93, 147, 255, 0.50);
+    --hl-error:   rgba(255, 95, 84, 0.55);
+    --hl-success: rgba(46, 204, 143, 0.52);
+    --hl-hint:    rgba(176, 130, 255, 0.50);
+    --arrow:      rgba(255, 178, 44, 0.90);
+    --piece-white: #f7f9fb;
+    --piece-black: #40352b;
+    --board-coord-on-light: #2b3742;
+    --board-coord-on-dark:  #e8eef4;
+  }
+  /* Every CSS colour syntax a token might legitimately arrive in: modern
+     space/slash rgb(), 8-digit hex, hsla(), a named colour and a solid hex.
+     None of these may produce a console warning or draw at the wrong opacity. */
+  :root.alpha-theme {
+    --hl-move:    rgb(240 178 34 / 25%);
+    --hl-select:  #2f68e04d;
+    --hl-error:   hsla(3, 65%, 52%, 0.30);
+    --hl-success: rgba(15, 157, 99, 1);
+    --hl-hint:    rebeccapurple;
+    --arrow:      rgba(232, 150, 20, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--ui-bg); color: var(--ui-fg);
+    font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  header {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 8px 12px; border-bottom: 1px solid var(--ui-line);
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 650; }
+  #contract { font-size: 12px; font-weight: 600; }
+  #contract.ok { color: #3dc47e; }
+  #contract.bad { color: #e5484d; }
+
+  #stage {
+    position: relative;
+    width: 100%;
+    /* deliberately not square: exercises non-1:1 aspect + resize */
+    height: min(58vh, 520px);
+    min-height: 240px;
+    background: #0d0f12;
+    border-bottom: 1px solid var(--ui-line);
+  }
+  #stage.narrow { width: 62%; }
+  #board { position: absolute; inset: 0; }
+
+  #panel { flex: 1; overflow: auto; padding: 10px 12px 28px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .row > .lbl {
+    width: 100%; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: #8b93a3; margin: 6px 0 2px;
+  }
+  button {
+    font: inherit; font-size: 13px; color: var(--ui-fg);
+    background: var(--ui-panel); border: 1px solid var(--ui-line);
+    border-radius: 8px; padding: 8px 11px; min-height: 38px; cursor: pointer;
+  }
+  button:active { background: #2a2f3a; }
+  button.danger { border-color: #6b2b2e; color: #ff9a9d; }
+  #log {
+    margin-top: 10px; padding: 8px 10px; background: #0d0f12;
+    border: 1px solid var(--ui-line); border-radius: 8px;
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    white-space: pre-wrap; max-height: 180px; overflow: auto; color: #a9b3c4;
+  }
+  #log .err { color: #ff9a9d; }
+  #log .ok { color: #7ee2ac; }
+
+  .slider { display: flex; align-items: center; gap: 8px; min-width: 250px; }
+  .slider label { font-size: 12px; color: #8b93a3; width: 66px; }
+  .slider input[type=range] { flex: 1; min-width: 110px; }
+  .slider output {
+    font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+    width: 52px; text-align: right; color: #cfd6e2;
+  }
+  #seat-readout {
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #7ee2ac; padding: 2px 0;
+  }
+  #tap-readout {
+    flex: 1 0 100%;
+    font: 15px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #f2c14e; padding: 4px 0;
+  }
+  #tap-readout b { font-size: 22px; color: #ffd977; }
+  button[aria-pressed=true] { background: #2f4a3a; border-color: #3dc47e; color: #b8f2d2; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>board3d.js</h1>
+  <span id="contract">checking…</span>
+</header>
+
+<div id="stage"><div id="board"></div></div>
+
+<div id="panel">
+  <div class="row">
+    <span class="lbl">positions (instant)</span>
+    <button data-fen="start">start</button>
+    <button data-fen="empty">empty</button>
+    <button data-fen="cluster">cluster (occlusion)</button>
+    <button data-fen="occlusion">occlusion pairs</button>
+    <button data-fen="hidden">tall hides short</button>
+    <button data-fen="endgame">endgame</button>
+    <button data-fen="castle">pre-castle</button>
+    <button data-fen="prepromo">pre-promotion</button>
+    <button data-fen="ep">pre-en-passant</button>
+    <button data-fen="allpieces">one of each</button>
+    <button data-fen="junk">malformed FEN</button>
+  </div>
+
+  <div class="row">
+    <span class="lbl">animation (returns a promise)</span>
+    <button id="anim-simple">animateMove e2→e4</button>
+    <button id="anim-knight">animateMove g1→f3</button>
+    <button id="anim-capture">setPosition(animate) capture</button>
+    <button id="anim-castle">castle O-O (via fen)</button>
+    <button id="anim-promo">promote b7→b8=Q (via fen)</button>
+    <button id="anim-ep">en passant (via fen)</button>
+    <button id="anim-bad">animateMove z9→q0 (ignored)</button>
+  </div>
+
+  <div class="row">
+    <span class="lbl">orientation &amp; camera</span>
+    <button id="flip">flip orientation</button>
+    <button id="orient-w">setOrientation white</button>
+    <button id="orient-b">setOrientation black</button>
+    <button data-view="white">view: white</button>
+    <button data-view="black">view: black</button>
+    <button data-view="side">view: side</button>
+    <button data-view="top">view: top (plan)</button>
+    <button data-view="seat">view: back to seat</button>
+  </div>
+
+  <div class="row">
+    <span class="lbl">seat &amp; assist — the camera never changes SIDES, only where you sit</span>
+    <button id="new-seat">new seat (fresh seed)</button>
+    <button id="same-seat">re-seed &quot;puzzle-42&quot; (must repeat)</button>
+    <button id="seat-low">lowest seat (28&deg;)</button>
+    <button id="seat-high">highest seat (45&deg;)</button>
+    <button id="assist" aria-pressed="false">assist: off</button>
+  </div>
+
+  <div class="row">
+    <div class="slider">
+      <label for="s-elev">elevation</label>
+      <input id="s-elev" type="range" min="28" max="45" step="0.5" value="36">
+      <output id="o-elev">36.0&deg;</output>
+    </div>
+    <div class="slider">
+      <label for="s-yaw">yaw</label>
+      <input id="s-yaw" type="range" min="-20" max="20" step="0.5" value="0">
+      <output id="o-yaw">0.0&deg;</output>
+    </div>
+    <div class="slider">
+      <label for="s-dist">distance</label>
+      <input id="s-dist" type="range" min="0.88" max="1.14" step="0.01" value="1">
+      <output id="o-dist">1.00</output>
+    </div>
+  </div>
+  <div class="row"><div id="seat-readout">seat …</div></div>
+
+  <div class="row">
+    <span class="lbl">raw square taps — fires for ANY square, empty or occupied, with interactive off too</span>
+    <button id="tap-on" aria-pressed="true">handler: installed</button>
+    <button id="tap-interactive">toggle interactive</button>
+    <button id="tap-scenario">set up a hidden-square tap test</button>
+    <div id="tap-readout">tap the board…</div>
+  </div>
+
+  <div class="row">
+    <span class="lbl">highlights</span>
+    <button data-hl="move">move</button>
+    <button data-hl="select">select</button>
+    <button data-hl="error">error</button>
+    <button data-hl="success">success</button>
+    <button data-hl="hint">hint</button>
+    <button id="hl-all">all five at once</button>
+    <button id="hl-bad">highlight('z9') (ignored)</button>
+    <button id="hl-clear-move">clear kind: move</button>
+    <button id="hl-clear">clearHighlights()</button>
+  </div>
+
+  <div class="row">
+    <span class="lbl">arrows</span>
+    <button id="ar-1">arrow e2→e4</button>
+    <button id="ar-2">arrow g1→f3 (hint colour)</button>
+    <button id="ar-3">arrow a1→h8 (long)</button>
+    <button id="ar-occ">arrow through the king</button>
+    <button id="ar-bad">arrow('a1','zz') (ignored)</button>
+    <button id="ar-clear">clearArrows()</button>
+  </div>
+
+  <div class="row">
+    <span class="lbl">feedback &amp; lifecycle</span>
+    <button id="fl-ok">flash success</button>
+    <button id="fl-err">flash error</button>
+    <button id="fl-spam">flash x20 rapidly</button>
+    <button id="do-resize">shrink stage + resize()</button>
+    <button id="do-theme">swap CSS tokens</button>
+    <button id="do-alpha">toggle rgba() tokens</button>
+    <button id="do-stress">mount/unmount x10</button>
+    <button id="do-destroy" class="danger">destroy()</button>
+    <button id="do-remount">re-create</button>
+  </div>
+
+  <div id="log"></div>
+</div>
+
+<script type="module">
+import { assertBoardHandle, START_FEN } from '../js/board-interface.js';
+import { createBoard } from '../js/board3d.js';
+
+const logEl = document.getElementById('log');
+function log(msg, cls) {
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = `${new Date().toLocaleTimeString()}  ${msg}`;
+  logEl.prepend(line);
+}
+window.addEventListener('error', (e) => log(`window error: ${e.message}`, 'err'));
+window.addEventListener('unhandledrejection', (e) => log(`unhandled rejection: ${e.reason}`, 'err'));
+
+const FENS = {
+  start: START_FEN,
+  empty: '8/8/8/8/8/8/8/8 w - - 0 1',
+  // Deliberately dense and interlocking: tall pieces directly in front of short
+  // ones on adjacent files and ranks, both colours, so occlusion is visible.
+  cluster: 'r2q1rk1/pp2bppp/2n1bn2/2ppp3/2PPP3/2N1BN2/PP2BPPP/R2Q1RK1 w - - 0 1',
+  // Four tall-in-front-of-short pairs on adjacent files. From a low white seat
+  // each rank-4 piece should genuinely hide the black pawn a rank behind it.
+  occlusion: '8/8/8/1p1p1p1p/1Q1R1B1K/8/8/8 w - - 0 1',
+  // The single cleanest demonstration: a white king on e4 with a black pawn
+  // directly behind it on e5, and the same pair one file over for comparison.
+  // At 28 degrees of elevation the pawn on e5 is fully behind the king's body.
+  hidden: '8/8/8/4p1p1/4K1P1/8/8/8 w - - 0 1',
+  endgame: '8/5k2/4p3/3pP3/3P1K2/8/8/8 w - - 0 1',
+  castle: 'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1',
+  prepromo: '8/1P5k/8/8/8/8/6K1/8 w - - 0 1',
+  ep: '8/8/8/3pP3/8/8/8/4K2k w - d6 0 1',
+  // every piece type, both colours, on neighbouring squares
+  allpieces: 'kqrbnp2/8/8/8/8/8/8/KQRBNP2 w - - 0 1',
+  junk: 'this-is-not-a-fen',
+};
+
+const stage = document.getElementById('stage');
+let board = null;
+
+/** Fresh mount point every time, so destroy() can be checked for leftovers. */
+function freshHost() {
+  stage.querySelectorAll('#board').forEach((n) => n.remove());
+  const host = document.createElement('div');
+  host.id = 'board';
+  stage.appendChild(host);
+  return host;
+}
+
+function mount(extra = {}) {
+  const host = freshHost();
+  board = createBoard(host, {
+    position: FENS.start,
+    orientation: 'white',
+    coordinates: true,
+    interactive: true,
+    onMove: (from, to) => {
+      log(`onMove(${from}, ${to}) -> accepted`);
+      board.animateMove(from, to).then(() => log(`  …${from}${to} settled`));
+      return true;
+    },
+    // exercise the option form of the raw square tap as well as the setter
+    onSquareTap: (sq) => onSquareTap(sq),
+    ...extra,
+  });
+  try {
+    assertBoardHandle(board);
+    const c = document.getElementById('contract');
+    c.textContent = 'BoardHandle OK';
+    c.className = 'ok';
+    log('assertBoardHandle passed', 'ok');
+  } catch (err) {
+    const c = document.getElementById('contract');
+    c.textContent = err.message;
+    c.className = 'bad';
+    log(err.message, 'err');
+  }
+  log(`el is <${board.el.tagName.toLowerCase()}>, orientation=${board.getOrientation()}`);
+  const h = board.getPieceHeights();
+  log(`piece heights (squares): ${Object.entries(h).map(([k, v]) => `${k} ${v.toFixed(3)}`).join('  ')}`);
+  // TDZ on the very first mount: the seat UI below has not been created yet.
+  try { syncSeatUI(); resetAssistUI(); installTapHandler(true); } catch { /* wired up below */ }
+}
+function mountWith(extra) {
+  if (board) { board.destroy(); board = null; }
+  mount(extra);
+}
+mount();
+
+const on = (id, fn) => document.getElementById(id).addEventListener('click', fn);
+const alive = () => {
+  if (!board) { log('no board (destroyed) — press "re-create"', 'err'); return false; }
+  return true;
+};
+
+/* ---- positions ---- */
+document.querySelectorAll('[data-fen]').forEach((b) => b.addEventListener('click', () => {
+  if (!alive()) return;
+  const k = b.dataset.fen;
+  board.setPosition(FENS[k]).then(() => log(`setPosition(${k}) resolved`));
+}));
+
+/* ---- animation ---- */
+const timed = (label, p) => {
+  const t = performance.now();
+  p.then(() => log(`${label} resolved after ${Math.round(performance.now() - t)}ms`, 'ok'))
+   .catch((e) => log(`${label} rejected: ${e}`, 'err'));
+};
+
+on('anim-simple', () => alive() && timed('animateMove e2e4',
+  board.setPosition(FENS.start).then(() => board.animateMove('e2', 'e4'))));
+
+on('anim-knight', () => alive() && timed('animateMove g1f3',
+  board.setPosition(FENS.start).then(() => board.animateMove('g1', 'f3'))));
+
+on('anim-capture', () => {
+  if (!alive()) return;
+  board.setPosition('rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2').then(() => {
+    timed('setPosition(animate) exd5',
+      board.setPosition('rnbqkbnr/ppp1pppp/8/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2',
+        { animate: true }));
+  });
+});
+
+on('anim-castle', () => {
+  if (!alive()) return;
+  board.setPosition(FENS.castle).then(() => {
+    timed('animateMove e1g1 {fen} (rook must follow)',
+      board.animateMove('e1', 'g1',
+        { fen: 'r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 b kq - 1 1' }));
+  });
+});
+
+on('anim-promo', () => {
+  if (!alive()) return;
+  board.setPosition(FENS.prepromo).then(() => {
+    timed('animateMove b7b8 {fen} promotion',
+      board.animateMove('b7', 'b8', { fen: '1Q5k/8/8/8/8/8/6K1/8 b - - 0 1' }));
+  });
+});
+
+on('anim-ep', () => {
+  if (!alive()) return;
+  board.setPosition(FENS.ep).then(() => {
+    timed('animateMove e5d6 {fen} en passant',
+      board.animateMove('e5', 'd6', { fen: '8/8/3P4/8/8/8/8/4K2k b - - 0 1' }));
+  });
+});
+
+on('anim-bad', () => alive() && timed('animateMove z9q0', board.animateMove('z9', 'q0')));
+
+/* ---- orientation & camera ---- */
+on('flip', () => {
+  if (!alive()) return;
+  board.setOrientation(board.getOrientation() === 'white' ? 'black' : 'white');
+  log(`getOrientation() -> ${board.getOrientation()} (the seat follows the side to move)`);
+  setTimeout(syncSeatUI, 520);
+});
+on('orient-w', () => { if (alive()) { board.setOrientation('white'); log('orientation white'); setTimeout(syncSeatUI, 520); } });
+on('orient-b', () => { if (alive()) { board.setOrientation('black'); log('orientation black'); setTimeout(syncSeatUI, 520); } });
+document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
+  if (!alive()) return;
+  board.setView(b.dataset.view);
+  log(`setView(${b.dataset.view})`);
+  setTimeout(syncSeatUI, 560);
+}));
+
+/* ---- seat & assist ---- */
+const sElev = document.getElementById('s-elev');
+const sYaw = document.getElementById('s-yaw');
+const sDist = document.getElementById('s-dist');
+const readout = document.getElementById('seat-readout');
+const assistBtn = document.getElementById('assist');
+
+function syncSeatUI() {
+  if (!board) return;
+  const s = board.getSeat();
+  sElev.value = s.elevation;
+  sYaw.value = s.yaw;
+  sDist.value = s.distance;
+  document.getElementById('o-elev').textContent = `${s.elevation.toFixed(1)}°`;
+  document.getElementById('o-yaw').textContent = `${s.yaw.toFixed(1)}°`;
+  document.getElementById('o-dist').textContent = s.distance.toFixed(2);
+  const c = board.getCameraState();
+  readout.textContent =
+    `seat  elev ${s.elevation.toFixed(1)}°  yaw ${s.yaw.toFixed(1)}°  dist ${s.distance.toFixed(2)}` +
+    `   |   camera  elev ${c.elevation.toFixed(1)}°  yaw ${c.yaw.toFixed(1)}°  fov ${c.fov.toFixed(1)}°` +
+    `   |   side to move: ${board.getOrientation()}`;
+}
+
+const pushSeat = () => {
+  if (!alive()) return;
+  board.setSeat({
+    elevation: Number(sElev.value),
+    yaw: Number(sYaw.value),
+    distance: Number(sDist.value),
+  }, { animate: false });
+  syncSeatUI();
+};
+[sElev, sYaw, sDist].forEach((i) => i.addEventListener('input', pushSeat));
+
+on('new-seat', () => {
+  if (!alive()) return;
+  const seed = `seat-${Date.now()}-${Math.random()}`;
+  const s = board.randomSeat(seed);
+  log(`randomSeat(${seed.slice(0, 18)}…) -> elev ${s.elevation}° yaw ${s.yaw}° dist ${s.distance}`, 'ok');
+  setTimeout(syncSeatUI, 520);
+  syncSeatUI();
+});
+
+on('same-seat', () => {
+  if (!alive()) return;
+  const s = board.randomSeat('puzzle-42');
+  log(`randomSeat('puzzle-42') -> elev ${s.elevation}° yaw ${s.yaw}° dist ${s.distance} (identical every press)`, 'ok');
+  setTimeout(syncSeatUI, 520);
+  syncSeatUI();
+});
+
+on('seat-low', () => { if (alive()) { board.setSeat({ elevation: 0 }); log('setSeat({elevation:0}) — clamped to the bottom of the envelope'); setTimeout(syncSeatUI, 520); } });
+on('seat-high', () => { if (alive()) { board.setSeat({ elevation: 90 }); log('setSeat({elevation:90}) — clamped to the top of the envelope'); setTimeout(syncSeatUI, 520); } });
+
+function resetAssistUI() {
+  const onNow = board ? board.getAssist() : false;
+  assistBtn.textContent = `assist: ${onNow ? 'on' : 'off'}`;
+  assistBtn.setAttribute('aria-pressed', String(onNow));
+}
+
+on('assist', () => {
+  if (!alive()) return;
+  const nowOn = board.setAssist(!board.getAssist());
+  resetAssistUI();
+  log(`setAssist(${nowOn}) — outlines + extra lift on black`);
+});
+
+/* ---- raw square taps ---- */
+const tapReadout = document.getElementById('tap-readout');
+const tapBtn = document.getElementById('tap-on');
+const tapInteractiveBtn = document.getElementById('tap-interactive');
+let tapCount = 0;
+let tapHistory = [];
+
+function onSquareTap(sq) {
+  tapCount += 1;
+  tapHistory.unshift(sq);
+  tapHistory = tapHistory.slice(0, 12);
+  const occupant = board ? board.getPosition()[sq] : null;
+  tapReadout.innerHTML =
+    `<b>${sq}</b> &nbsp; tap #${tapCount} &nbsp; square is ${occupant ? `occupied by ${occupant}` : 'EMPTY'}` +
+    ` &nbsp;|&nbsp; recent: ${tapHistory.join(' ')}`;
+  log(`onSquareTap('${sq}') — ${occupant ? `${occupant} stands there` : 'empty square'}`, 'ok');
+}
+
+function installTapHandler(on) {
+  if (!board) return;
+  board.setSquareTapHandler(on ? onSquareTap : null);
+  tapBtn.textContent = `handler: ${on ? 'installed' : 'cleared'}`;
+  tapBtn.setAttribute('aria-pressed', String(on));
+  tapReadout.textContent = on
+    ? 'tap the board…'
+    : 'handler cleared — taps must report nothing';
+}
+on('tap-on', () => {
+  if (!alive()) return;
+  installTapHandler(tapBtn.getAttribute('aria-pressed') !== 'true');
+});
+
+// `interactive` must make no difference to the raw tap, so make it easy to try
+// both. Re-mounting is the only way to change the option, so re-mount.
+let interactiveNow = true;
+on('tap-interactive', () => {
+  interactiveNow = !interactiveNow;
+  mountWith({ interactive: interactiveNow });
+  tapInteractiveBtn.textContent = `interactive: ${interactiveNow}`;
+  log(`re-mounted with interactive=${interactiveNow} — raw taps must still fire`);
+});
+tapInteractiveBtn.textContent = 'interactive: true';
+
+on('tap-scenario', () => {
+  if (!alive()) return;
+  // A black king on e6 with a white queen on e4/e5 in front of it: from the
+  // lowest seat the queen's body covers e5/e6 on screen, and the tap must still
+  // report the square the finger is over rather than the piece in the way.
+  board.setPosition('8/8/4k3/8/4Q3/8/8/4K3 w - - 0 1').then(() => {
+    board.setOrientation('white');
+    board.setSeat({ elevation: 28, yaw: 0, distance: 0.88 }, { animate: false });
+    board.clearHighlights();
+    board.highlight(['e5', 'e6'], 'hint');
+    syncSeatUI();
+    log('lowest seat, queen on e4 covering e5/e6 — tap the covered squares and check the readout');
+  });
+});
+
+syncSeatUI();
+resetAssistUI();
+installTapHandler(true);
+
+/* ---- highlights ---- */
+const HL_SQUARES = {
+  move: ['e2', 'e4'],
+  select: ['d4'],
+  error: ['f7'],
+  success: ['c6'],
+  hint: ['g5', 'h4'],
+};
+document.querySelectorAll('[data-hl]').forEach((b) => b.addEventListener('click', () => {
+  if (!alive()) return;
+  const k = b.dataset.hl;
+  board.highlight(HL_SQUARES[k], k);
+  log(`highlight(${HL_SQUARES[k].join(',')}, '${k}')`);
+}));
+on('hl-all', () => {
+  if (!alive()) return;
+  board.clearHighlights();
+  board.highlight(['a1', 'b1'], 'move');
+  board.highlight(['c1'], 'select');
+  board.highlight(['d1'], 'error');
+  board.highlight(['e1'], 'success');
+  board.highlight(['f1'], 'hint');
+  log('all five kinds on a1..f1 — each should look different');
+});
+on('hl-bad', () => { if (alive()) { board.highlight(['z9', '', 'a99', null], 'move'); log('bad squares ignored (no throw)', 'ok'); } });
+on('hl-clear-move', () => { if (alive()) { board.clearHighlights('move'); log("clearHighlights('move')"); } });
+on('hl-clear', () => { if (alive()) { board.clearHighlights(); log('clearHighlights()'); } });
+
+/* ---- arrows ---- */
+on('ar-1', () => { if (alive()) { board.arrow('e2', 'e4'); log("arrow('e2','e4')"); } });
+on('ar-2', () => { if (alive()) { board.arrow('g1', 'f3', 'hint'); log("arrow('g1','f3','hint')"); } });
+on('ar-3', () => { if (alive()) { board.arrow('a1', 'h8'); log("arrow('a1','h8')"); } });
+on('ar-occ', () => {
+  if (!alive()) return;
+  board.setPosition('8/8/8/8/4K3/8/8/8 w - - 0 1').then(() => {
+    board.arrow('e1', 'e8');
+    log('arrow drawn straight through a king — must stay visible');
+  });
+});
+on('ar-bad', () => { if (alive()) { board.arrow('a1', 'zz'); log('bad arrow ignored (no throw)', 'ok'); } });
+on('ar-clear', () => { if (alive()) { board.clearArrows(); log('clearArrows()'); } });
+
+/* ---- feedback & lifecycle ---- */
+on('fl-ok', () => { if (alive()) { board.flash('success'); log("flash('success')"); } });
+on('fl-err', () => { if (alive()) { board.flash('error'); log("flash('error')"); } });
+on('fl-spam', () => {
+  if (!alive()) return;
+  for (let i = 0; i < 20; i += 1) {
+    setTimeout(() => board.flash(i % 2 ? 'error' : 'success'), i * 25);
+  }
+  log('flash x20 in 500ms — must not throw or leak');
+});
+
+on('do-resize', () => {
+  stage.classList.toggle('narrow');
+  if (alive()) board.resize();
+  log(`resize() at ${stage.clientWidth}x${stage.clientHeight}`);
+});
+
+on('do-theme', () => {
+  document.documentElement.classList.toggle('alt-theme');
+  if (alive() && board.refreshTheme) board.refreshTheme();
+  log('CSS custom properties swapped; board recoloured from tokens');
+});
+
+on('do-alpha', () => {
+  document.documentElement.classList.toggle('alpha-theme');
+  const on = document.documentElement.classList.contains('alpha-theme');
+  if (alive() && board.refreshTheme) board.refreshTheme();
+  if (alive()) {
+    board.clearHighlights(); board.clearArrows();
+    board.highlight(['e4', 'd4'], 'move');
+    board.highlight(['e5'], 'select');
+    board.highlight(['c6'], 'success');
+    board.highlight(['f6'], 'hint');
+    board.arrow('b1', 'c3');
+  }
+  log(`rgba() tokens ${on ? 'ON' : 'off'} — highlights must be see-through and the console must stay clean`, 'ok');
+});
+
+on('do-stress', async () => {
+  if (board) { board.destroy(); board = null; }
+  for (let i = 0; i < 10; i += 1) {
+    const b = createBoard(freshHost(), { position: FENS.cluster });
+    b.highlight(['e4'], 'move');
+    b.arrow('e2', 'e4');
+    await new Promise((r) => setTimeout(r, 60));
+    b.destroy();
+  }
+  mount();
+  log('mounted/unmounted 10x — check for WebGL context warnings above', 'ok');
+});
+
+on('do-destroy', () => {
+  if (!alive()) return;
+  board.destroy();
+  board = null;
+  log('destroy() — stage should be empty and the render loop stopped', 'ok');
+});
+
+on('do-remount', () => {
+  if (board) { log('already mounted'); return; }
+  mount();
+});
+
+// expose for console poking
+window.getBoard = () => board;
+</script>
+</body>
+</html>

@@ -1,0 +1,1868 @@
+/* =============================================================================
+   app.css — components for the chess tactics trainer.
+
+   Requires tokens.css to be loaded first. Every colour, size, radius and
+   duration below resolves to a custom property from tokens.css; there are no
+   magic literals except a handful of structural 1px/50% values.
+
+   Layout model
+   ------------
+   The app is a FIXED SHELL that never scrolls. One three-row grid:
+
+       +-----------------------------+  .app-bar     (auto)  readouts
+       |                             |
+       |          .stage             |  minmax(0,1fr)        board + prompt
+       |                             |
+       +-----------------------------+  .action-bar  (auto)  thumb zone
+       |     [ Safe ]   [ Unsafe ]   |
+       +-----------------------------+
+
+   The board sizes itself to whatever the stage row leaves over (container
+   query units), so it is always fully visible and the answer buttons are
+   always under the thumb. This is what replaces scrollToBottom().
+
+   The ONLY scrollable regions in the whole app are explicitly opted in with
+   .u-scroll (the game-over history list, the settings sheet).
+   ========================================================================== */
+
+/* -----------------------------------------------------------------------------
+   RESET + BASE
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-normal);
+  letter-spacing: var(--tracking-snug);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Applied to <html> and <body> of the real app only (not the design gallery,
+   which needs to scroll). Kills rubber-banding and double-tap zoom. */
+html.app,
+body.app {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+h1, h2, h3, h4, p, figure {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* Keyboard focus only — never draw a ring on a thumb tap. */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* -----------------------------------------------------------------------------
+   UTILITIES
+   -------------------------------------------------------------------------- */
+
+/* Tabular figures. Mandatory on every live number: a proportional-figure
+   timer reflows its own width once a second, which is exactly the jitter
+   this redesign exists to remove. */
+.u-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-variant-ligatures: none;
+}
+
+.u-caps {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.u-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The only opt-in scroll containers in the app. */
+.u-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.u-scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.u-scroll-x::-webkit-scrollbar,
+.u-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 0;
+}
+
+.u-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+
+.u-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* -----------------------------------------------------------------------------
+   APP SHELL
+   -------------------------------------------------------------------------- */
+.app-shell {
+  position: relative;
+  width: 100%;
+  height: var(--shell-height);
+  display: grid;
+  grid-template: "stack" minmax(0, 1fr) / minmax(0, 1fr);
+  overflow: hidden;
+  background: var(--bg);
+  isolation: isolate;
+}
+
+/* Every screen occupies the same cell; exactly one is un-hidden at a time. */
+.screen {
+  grid-area: stack;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--bg);
+}
+
+.screen--enter {
+  animation: screen-in var(--dur-4) var(--ease-out) both;
+}
+
+@keyframes screen-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* -----------------------------------------------------------------------------
+   APP BAR — score / strikes / timer, plus the two corner controls
+   -------------------------------------------------------------------------- */
+.app-bar {
+  display: grid;
+  grid-template-columns: var(--tap-min) minmax(0, 1fr) var(--tap-min);
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--appbar-height);
+  padding:
+    calc(var(--inset-top) + var(--space-2))
+    calc(var(--inset-right) + var(--space-3))
+    var(--space-2)
+    calc(var(--inset-left) + var(--space-3));
+  background: var(--surface);
+  border-bottom: var(--border-width) solid var(--divider);
+  box-shadow: var(--shadow-1);
+  z-index: var(--z-bar);
+}
+
+/* The play screen carries a third control: [exit] [restart] · readouts · [settings].
+   Exit is leftmost because that is where every other screen puts "leave this screen",
+   and because it keeps both destructive controls out of the thumb arc that the answer
+   buttons occupy — a mis-tap there costs a run.
+   The trailing column is two taps wide so the readouts stay optically centred against
+   the two leading controls rather than drifting left. */
+.app-bar:has([data-shell="exit"]) {
+  grid-template-columns:
+    var(--tap-min)
+    var(--tap-min)
+    minmax(0, 1fr)
+    calc(var(--tap-min) * 2 + var(--space-2));
+}
+
+.app-bar:has([data-shell="exit"]) > [data-shell="settings"] {
+  justify-self: end;
+}
+
+.app-bar__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-tight);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The readout cluster. Fixed column widths so nothing shifts as values change. */
+.readouts {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.readout {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.readout__label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-3);
+  line-height: 1;
+}
+
+.readout__value {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: var(--text);
+  transition: color var(--dur-2) var(--ease-out);
+}
+
+.readout--score .readout__value { color: var(--gold); }
+
+/* Timer escalates: neutral -> amber under a minute -> red in the last 15s. */
+.readout--timer.is-warning .readout__value { color: var(--warn); }
+
+.readout--timer.is-critical .readout__value {
+  color: var(--unsafe);
+  animation: tick-pulse 1s var(--ease-in-out) infinite;
+}
+
+@keyframes tick-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+/* Score bump on a correct answer. */
+.readout__value.is-bumped {
+  animation: value-bump var(--dur-4) var(--ease-spring);
+}
+
+@keyframes value-bump {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+
+/* --- Strikes: three pips, not a "Strikes: 2" string ----------------------- */
+.strikes {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 22px;
+}
+
+.strikes__pip {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-round);
+  border: 2px solid var(--border-strong);
+  background: transparent;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-spring);
+}
+
+.strikes__pip.is-spent {
+  background: var(--unsafe);
+  border-color: var(--unsafe);
+}
+
+.strikes__pip.is-just-spent {
+  animation: pip-strike var(--dur-5) var(--ease-spring);
+}
+
+@keyframes pip-strike {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.7); }
+  100% { transform: scale(1); }
+}
+
+/* -----------------------------------------------------------------------------
+   ICON BUTTON — secondary/corner controls.
+
+   Deliberately 40px, not the 44px of a primary target, and pinned to the top
+   corners: far from the thumb arc that the answer buttons occupy. Anything
+   destructive (restart) additionally routes through .confirm-sheet, so a
+   stray corner tap mid-game costs a dismiss, never a run.
+   -------------------------------------------------------------------------- */
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-round);
+  color: var(--text-2);
+  background: transparent;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.icon-btn svg {
+  width: 21px;
+  height: 21px;
+  display: block;
+}
+
+.icon-btn:hover { background: var(--surface-3); color: var(--text); }
+.icon-btn:active { transform: scale(0.92); background: var(--surface-3); }
+.icon-btn--danger:hover { color: var(--unsafe); background: var(--unsafe-soft); }
+.icon-btn--ghost { color: var(--text-3); }
+
+/* -----------------------------------------------------------------------------
+   STAGE — board + move prompt. Never scrolls.
+   -------------------------------------------------------------------------- */
+/* The stage is a size container holding a single vertically CENTRED stack:
+   prompt, then board. Centring the pair as a group matters — with the prompt
+   pinned to the top of the row the eye has to travel the full height of the
+   phone between "which move?" and "what does the board show?", and on a tall
+   handset that left ~250px of dead space between them. */
+.stage {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-auto-rows: min-content;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) calc(var(--inset-left) + var(--space-3))
+           var(--space-2) calc(var(--inset-right) + var(--space-3));
+  overflow: hidden;
+  container-type: size;
+}
+
+/* Nothing in the stage may widen the stage.
+   `max-width: 100%` cannot do this job here: the percentage resolves against a track that
+   is still being intrinsically sized, so the constraint is circular and a wide child (a long
+   move prompt, the review eval bar) silently stretched the column and pushed the board
+   off-centre. `100cqi` resolves against the stage's own container size, which is definite,
+   so it clamps instead of feeding back. */
+.stage > * {
+  max-width: 100cqi;
+}
+
+/* --- Move prompt: the question being asked ------------------------------- */
+.prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+  margin-inline: auto;
+  max-width: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow-1);
+}
+
+.prompt__label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.prompt__move {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-normal);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.prompt__side {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-round);
+  border: var(--border-width) solid var(--border-strong);
+  flex: none;
+}
+
+.prompt__side[data-side="white"] { background: var(--piece-white); }
+.prompt__side[data-side="black"] { background: var(--piece-black); }
+
+/* --- Board container -----------------------------------------------------
+   .board-frame takes the largest square that fits the stage once the prompt
+   has taken its share (--stage-reserve). Container-query units measure the
+   .stage, so the board SHRINKS to fit rather than pushing the answer buttons
+   off the bottom of the screen. Board internals belong to the renderer
+   modules — we only style the frame around the slot. */
+.board-area {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.board-frame {
+  position: relative;
+  width: min(100%, var(--board-max));
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-md);
+  background: var(--board-edge);
+  padding: 4px;
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+  transition: box-shadow var(--dur-3) var(--ease-out);
+}
+
+@supports (width: 1cqi) {
+  .board-frame {
+    width: min(100cqi, calc(100cqb - var(--stage-reserve)), var(--board-max));
+  }
+}
+
+/* The renderer mounts here. Sized 100%, DPR handling is the module's job. */
+.board-slot {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--radius-md) - 4px);
+  overflow: hidden;
+  background:
+    repeating-conic-gradient(
+      var(--board-dark) 0% 25%,
+      var(--board-light) 0% 50%
+    ) 0 0 / 25% 25%;
+}
+
+/* Whole-board verdict ring. The renderer also flashes internally; this is the
+   frame-level echo so the feedback reads even in peripheral vision. */
+.board-frame.is-correct {
+  box-shadow: var(--shadow-3), 0 0 0 3px var(--safe), 0 0 28px var(--safe-ring);
+}
+
+.board-frame.is-wrong {
+  box-shadow: var(--shadow-3), 0 0 0 3px var(--unsafe), 0 0 28px var(--unsafe-ring);
+  animation: board-shake var(--dur-4) var(--ease-out);
+}
+
+@keyframes board-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20%      { transform: translate3d(-6px, 0, 0); }
+  40%      { transform: translate3d(5px, 0, 0); }
+  60%      { transform: translate3d(-3px, 0, 0); }
+  80%      { transform: translate3d(2px, 0, 0); }
+}
+
+/* --- Blindfold / visualisation mode -------------------------------------- */
+.blindfold {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  height: 100%;
+  padding: var(--space-6);
+  border-radius: calc(var(--radius-md) - 4px);
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--surface-2), var(--surface-inset));
+  text-align: center;
+}
+
+.blindfold__eyebrow {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.blindfold__moves {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  word-spacing: 0.35em;
+}
+
+.blindfold__hint {
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  max-width: 26ch;
+}
+
+/* --- Status line under the board ----------------------------------------
+   Optional. On a tall handset the board is width-limited, which leaves a
+   band of empty space below it; this fills it with the two facts worth
+   knowing mid-run instead of leaving a void. */
+.stage__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+}
+
+.stage__meta > * { display: inline-flex; align-items: center; gap: var(--space-1); }
+
+.stage__meta svg { width: 13px; height: 13px; }
+
+.stage__meta-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: var(--radius-round);
+  background: currentColor;
+  opacity: 0.5;
+}
+
+.stage__meta-streak { color: var(--gold); font-weight: var(--fw-semibold); }
+
+/* -----------------------------------------------------------------------------
+   VERDICT BANNER — floats over the bottom of the stage after an answer.
+   -------------------------------------------------------------------------- */
+.verdict {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-3);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  box-shadow: var(--shadow-3);
+  z-index: var(--z-board);
+  animation: verdict-in var(--dur-3) var(--ease-spring) both;
+}
+
+.verdict svg { width: 18px; height: 18px; flex: none; }
+
+.verdict--correct { background: var(--safe); color: var(--safe-ink); }
+.verdict--wrong   { background: var(--unsafe); color: var(--unsafe-ink); }
+.verdict--neutral { background: var(--surface-3); color: var(--text); }
+
+.verdict__delta {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+@keyframes verdict-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.94); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+/* -----------------------------------------------------------------------------
+   ACTION BAR — the thumb zone. Always visible, never scrolled away from.
+   -------------------------------------------------------------------------- */
+.action-bar {
+  padding:
+    var(--space-2)
+    calc(var(--inset-right) + var(--space-3))
+    calc(var(--inset-bottom) + var(--space-3))
+    calc(var(--inset-left) + var(--space-3));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+  z-index: var(--z-bar);
+}
+
+.action-bar__inner {
+  max-width: var(--content-max);
+  margin-inline: auto;
+}
+
+/* --- The two answer buttons ---------------------------------------------- */
+.answers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--answer-gutter);
+}
+
+.answer {
+  position: relative;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 2px;
+  min-height: var(--answer-height);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-tight);
+  box-shadow: var(--shadow-2), var(--shadow-inset);
+  user-select: none;
+  -webkit-user-select: none;
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    opacity var(--dur-2) var(--ease-out),
+    filter var(--dur-2) var(--ease-out);
+}
+
+.answer svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  opacity: 0.9;
+}
+
+.answer__hint {
+  font-family: var(--font-sans);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.answer:active {
+  transform: translateY(2px) scale(0.985);
+  box-shadow: var(--shadow-1);
+}
+
+.answer--safe {
+  background: var(--safe);
+  color: var(--safe-ink);
+}
+
+.answer--unsafe {
+  background: var(--unsafe);
+  color: var(--unsafe-ink);
+}
+
+.answer:disabled,
+.answer[aria-disabled="true"] {
+  cursor: default;
+  filter: saturate(0.35);
+  opacity: 0.5;
+}
+
+/* Feedback: the chosen button restates the RESULT, not its own label colour.
+   Tapping "Safe" when the move was a blunder turns that button red — a green
+   button wearing a red ring is the ambiguous thing to avoid. The swapped
+   icon (check / cross) and the verdict pill carry the same message, so the
+   meaning survives without colour. The untapped button recedes. */
+.answer.is-correct {
+  background: var(--safe);
+  color: var(--safe-ink);
+  box-shadow: 0 0 0 4px var(--safe-ring), var(--shadow-3);
+  animation: answer-pop var(--dur-4) var(--ease-spring);
+  filter: none;
+  opacity: 1;
+}
+
+.answer.is-wrong {
+  background: var(--unsafe);
+  color: var(--unsafe-ink);
+  box-shadow: 0 0 0 4px var(--unsafe-ring), var(--shadow-3);
+  animation: answer-shake var(--dur-4) var(--ease-out);
+  filter: none;
+  opacity: 1;
+}
+
+.answer.is-dimmed {
+  filter: saturate(0.25);
+  opacity: 0.35;
+}
+
+@keyframes answer-pop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+
+@keyframes answer-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  25%      { transform: translate3d(-5px, 0, 0); }
+  50%      { transform: translate3d(4px, 0, 0); }
+  75%      { transform: translate3d(-2px, 0, 0); }
+}
+
+/* -----------------------------------------------------------------------------
+   BUTTONS — everything that is not an answer button
+   -------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-snug);
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.btn svg { width: 19px; height: 19px; flex: none; }
+
+.btn:active { transform: scale(0.97); }
+
+.btn--block { display: flex; width: 100%; }
+
+.btn--lg {
+  min-height: var(--tap-comfort);
+  font-size: var(--fs-xl);
+  border-radius: var(--radius-lg);
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-2);
+}
+
+.btn--primary:hover { background: var(--accent-hover); }
+
+.btn--secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow-1);
+}
+
+.btn--secondary:hover { background: var(--surface-2); border-color: var(--border-strong); }
+
+.btn--ghost {
+  background: transparent;
+  color: var(--text-2);
+}
+
+.btn--ghost:hover { background: var(--surface-3); color: var(--text); }
+
+.btn--danger {
+  background: var(--unsafe);
+  color: var(--unsafe-ink);
+  box-shadow: var(--shadow-2);
+}
+
+.btn--danger:hover { background: var(--unsafe-hover); }
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+
+/* -----------------------------------------------------------------------------
+   SCREEN BODY — generic padded, centred content column (menu / summary)
+   -------------------------------------------------------------------------- */
+.screen-body {
+  min-height: 0;
+  padding: var(--space-2) calc(var(--inset-left) + var(--space-4))
+           var(--space-4) calc(var(--inset-right) + var(--space-4));
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+}
+
+.screen-body__inner {
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+  display: grid;
+  gap: var(--space-5);
+}
+
+.section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.section__title {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.hero {
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+}
+
+.hero__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-heavy);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+.hero__subtitle {
+  font-size: var(--fs-md);
+  color: var(--text-2);
+}
+
+/* -----------------------------------------------------------------------------
+   MODE CARDS
+   -------------------------------------------------------------------------- */
+.mode-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.mode-card {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 78px;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow-1);
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
+}
+
+.mode-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-2);
+}
+
+.mode-card:active { transform: scale(0.985); }
+
+.mode-card[aria-pressed="true"],
+.mode-card.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: var(--shadow-2), 0 0 0 1px var(--accent);
+}
+
+.mode-card__icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  color: var(--text-2);
+  flex: none;
+}
+
+.mode-card__icon svg { width: 24px; height: 24px; }
+
+.mode-card--rush  .mode-card__icon { background: var(--unsafe-soft); color: var(--unsafe); }
+.mode-card--survival .mode-card__icon { background: var(--safe-soft); color: var(--safe); }
+.mode-card--rated .mode-card__icon { background: var(--accent-soft); color: var(--accent); }
+.mode-card--classic .mode-card__icon { background: var(--warn-soft); color: var(--warn); }
+.mode-card--blind .mode-card__icon { background: var(--miss-soft); color: var(--miss); }
+
+.mode-card__body { min-width: 0; display: grid; gap: 2px; }
+
+.mode-card__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-snug);
+  color: var(--text);
+}
+
+.mode-card__desc {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mode-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.mode-card__chevron {
+  color: var(--text-3);
+  display: grid;
+  place-items: center;
+}
+
+.mode-card__chevron svg { width: 18px; height: 18px; }
+
+/* -----------------------------------------------------------------------------
+   CHIPS / BADGES
+   -------------------------------------------------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge--safe   { background: var(--safe-soft);   color: var(--safe); }
+.badge--unsafe { background: var(--unsafe-soft); color: var(--unsafe); }
+.badge--miss   { background: var(--miss-soft);   color: var(--miss); }
+.badge--accent { background: var(--accent-soft); color: var(--accent); }
+.badge--gold   { background: var(--warn-soft);   color: var(--gold); }
+
+/* -----------------------------------------------------------------------------
+   ELO BAND SELECTOR — horizontal snap row of rating chips
+   -------------------------------------------------------------------------- */
+.band-picker {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.band-picker__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.band-picker__current {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-tight);
+  color: var(--accent);
+}
+
+.band-row {
+  display: flex;
+  gap: var(--space-2);
+  padding: 2px var(--space-1) var(--space-2);
+  margin-inline: calc(var(--space-4) * -1);
+  padding-inline: var(--space-4);
+  scroll-snap-type: x mandatory;
+}
+
+.band {
+  position: relative;
+  flex: none;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  min-width: 78px;
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  scroll-snap-align: center;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+.band__range {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.band__label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.band[aria-checked="true"],
+.band.is-selected {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.band[aria-checked="true"] .band__range,
+.band.is-selected .band__range { color: var(--accent-ink); }
+
+.band[aria-checked="true"] .band__label,
+.band.is-selected .band__label { color: var(--accent-ink); opacity: 0.75; }
+
+/* -----------------------------------------------------------------------------
+   SEGMENTED CONTROL — 2D / 3D, and other binary-to-ternary settings
+   -------------------------------------------------------------------------- */
+.segmented {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  border: var(--border-width) solid var(--border);
+}
+
+.segmented--block { display: grid; width: 100%; }
+
+.segmented__option {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 38px;
+  padding-inline: var(--space-4);
+  border-radius: calc(var(--radius-md) - 4px);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+}
+
+.segmented__option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented__option:has(input:checked) {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-1);
+}
+
+/* Fallback for engines without :has() — the app may also set .is-active. */
+.segmented__option.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-1);
+}
+
+.segmented__option:has(input:focus-visible) { box-shadow: var(--focus-ring); }
+
+/* -----------------------------------------------------------------------------
+   SETTINGS ROWS + TOGGLE SWITCH
+   -------------------------------------------------------------------------- */
+.setting-list {
+  display: grid;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  overflow: hidden;
+}
+
+.setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--tap-comfort);
+  padding: var(--space-3) var(--space-4);
+}
+
+.setting-row + .setting-row {
+  border-top: var(--border-width) solid var(--divider);
+}
+
+.setting-row__label {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.setting-row__name {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+}
+
+.setting-row__desc {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  color: var(--text-3);
+}
+
+/* iOS-proportioned switch: 51x31 track, 27 thumb. */
+.switch {
+  position: relative;
+  flex: none;
+  display: inline-block;
+  width: 51px;
+  height: 31px;
+}
+
+.switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.switch__track {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  border: var(--border-width) solid var(--border-strong);
+  transition:
+    background-color var(--dur-3) var(--ease-out),
+    border-color var(--dur-3) var(--ease-out);
+}
+
+.switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: var(--radius-round);
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+  transition: transform var(--dur-3) var(--ease-spring);
+}
+
+.switch input:checked ~ .switch__track {
+  background: var(--safe);
+  border-color: var(--safe);
+}
+
+.switch input:checked ~ .switch__thumb {
+  transform: translateX(20px);
+}
+
+.switch input:focus-visible ~ .switch__track {
+  box-shadow: var(--focus-ring);
+}
+
+.switch input:disabled ~ .switch__track { opacity: 0.4; }
+
+/* -----------------------------------------------------------------------------
+   COUNTDOWN + GENERIC OVERLAY
+   -------------------------------------------------------------------------- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: var(--scrim);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.1);
+  z-index: var(--z-overlay);
+  animation: fade-in var(--dur-3) var(--ease-out) both;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.countdown {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.countdown__num {
+  font-family: var(--font-display);
+  font-size: var(--fs-6xl);
+  font-weight: var(--fw-heavy);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: #fff;
+  /* Fixed advance width so 3 -> 2 -> 1 never shifts the glyph's centre. */
+  min-width: 1.2em;
+  text-align: center;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  animation: countdown-tick var(--dur-5) var(--ease-out);
+}
+
+.countdown__num--go {
+  font-size: var(--fs-5xl);
+  color: var(--safe);
+  min-width: auto;
+}
+
+.countdown__label {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+@keyframes countdown-tick {
+  0%   { transform: scale(1.4); opacity: 0; }
+  30%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* -----------------------------------------------------------------------------
+   CONFIRM SHEET — bottom sheet guarding destructive mid-game actions
+   -------------------------------------------------------------------------- */
+.sheet-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  z-index: var(--z-sheet);
+  animation: fade-in var(--dur-3) var(--ease-out) both;
+}
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: calc(var(--z-sheet) + 1);
+  display: grid;
+  gap: var(--space-4);
+  padding:
+    var(--space-3)
+    calc(var(--inset-right) + var(--space-4))
+    calc(var(--inset-bottom) + var(--space-4))
+    calc(var(--inset-left) + var(--space-4));
+  background: var(--surface);
+  border-top-left-radius: var(--radius-2xl);
+  border-top-right-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-4);
+  animation: sheet-in var(--dur-4) var(--ease-out) both;
+}
+
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.sheet__grabber {
+  width: 40px;
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+  justify-self: center;
+}
+
+.sheet__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-tight);
+  text-align: center;
+}
+
+.sheet__text {
+  font-size: var(--fs-md);
+  color: var(--text-2);
+  text-align: center;
+  margin-top: calc(var(--space-2) * -1);
+}
+
+.sheet__actions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.sheet__body { display: grid; gap: var(--space-4); }
+
+/* -----------------------------------------------------------------------------
+   GAME OVER SUMMARY
+   -------------------------------------------------------------------------- */
+.summary-hero {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  padding: var(--space-5) var(--space-4) var(--space-4);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(130% 100% at 50% 0%, var(--surface-2), var(--surface));
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow-2);
+  text-align: center;
+}
+
+.summary-hero__eyebrow {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.summary-hero__score {
+  font-family: var(--font-display);
+  font-size: var(--fs-5xl);
+  font-weight: var(--fw-heavy);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: var(--gold);
+}
+
+.summary-hero__note {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.stat-tile {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+}
+
+.stat-tile__value {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+.stat-tile__label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.stat-tile--good .stat-tile__value { color: var(--safe); }
+.stat-tile--bad  .stat-tile__value { color: var(--unsafe); }
+
+/* --- Reviewable puzzle history ------------------------------------------- */
+.history {
+  display: grid;
+  gap: var(--space-2);
+  min-height: 0;
+  padding-bottom: var(--space-2);
+}
+
+.history__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  min-height: 0;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: 4px 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  text-align: left;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  overflow: hidden;
+  transition: background-color var(--dur-2) var(--ease-out);
+}
+
+.history-item:hover { background: var(--surface-2); }
+.history-item:active { background: var(--surface-3); }
+
+/* The 4px rail is the primary result cue; the icon and the verdict word carry
+   it redundantly so the list is scannable without relying on hue. */
+.history-item__rail {
+  align-self: stretch;
+  background: var(--border-strong);
+}
+
+.history-item__icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-round);
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+
+.history-item__icon svg { width: 15px; height: 15px; }
+
+.history-item__body { min-width: 0; display: grid; gap: 1px; }
+
+.history-item__title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item__meta {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item__rating {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: var(--text-2);
+}
+
+/* Three result states, matching the three outcomes the game actually logs. */
+.history-item[data-result="correct"] .history-item__rail { background: var(--safe); }
+.history-item[data-result="correct"] .history-item__icon { background: var(--safe-soft); color: var(--safe); }
+
+.history-item[data-result="blunder"] .history-item__rail { background: var(--unsafe); }
+.history-item[data-result="blunder"] .history-item__icon { background: var(--unsafe-soft); color: var(--unsafe); }
+
+.history-item[data-result="missed"] .history-item__rail { background: var(--miss); }
+.history-item[data-result="missed"] .history-item__icon { background: var(--miss-soft); color: var(--miss); }
+
+.history-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.history-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.history-legend__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--border-strong);
+}
+
+.history-legend__swatch--correct { background: var(--safe); }
+.history-legend__swatch--blunder { background: var(--unsafe); }
+.history-legend__swatch--missed  { background: var(--miss); }
+
+/* Summary screen puts the history in the flexible row so ONLY it scrolls. */
+.screen--summary {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.summary-scroll {
+  min-height: 0;
+  padding-inline: calc(var(--inset-left) + var(--space-4)) calc(var(--inset-right) + var(--space-4));
+  /* Fade the last few pixels so the list reads as "more below" rather than
+     as a row sliced in half by the action bar. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
+}
+
+.summary-scroll > .screen-body__inner { padding-block: var(--space-2) var(--space-4); }
+
+/* -----------------------------------------------------------------------------
+   LOADING
+   -------------------------------------------------------------------------- */
+.loading {
+  grid-area: stack;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-4);
+  padding: var(--space-7);
+  background: var(--bg);
+  text-align: center;
+  z-index: var(--z-overlay);
+}
+
+.spinner {
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-round);
+  border: 3px solid var(--surface-3);
+  border-top-color: var(--accent);
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.loading__status {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  max-width: 30ch;
+}
+
+.progress {
+  width: min(240px, 70vw);
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.progress__bar {
+  height: 100%;
+  width: 42%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--dur-4) var(--ease-out);
+}
+
+/* Skeleton shimmer for content that will pop in. */
+.skeleton {
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%)
+    0 0 / 400% 100%;
+  animation: shimmer 1.4s var(--ease-in-out) infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to   { background-position: 0 0; }
+}
+
+/* -----------------------------------------------------------------------------
+   TOAST / SNACKBAR — sits above the action bar so it never covers the answers
+   -------------------------------------------------------------------------- */
+.toast-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--inset-bottom) + var(--answer-height) + var(--space-6));
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-4);
+  pointer-events: none;
+  z-index: var(--z-toast);
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  border: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  pointer-events: auto;
+  animation: toast-in var(--dur-3) var(--ease-spring) both;
+}
+
+.toast svg { width: 17px; height: 17px; flex: none; }
+
+.toast__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast__action {
+  margin-left: var(--space-1);
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+
+.toast--success { border-color: var(--safe); color: var(--text); }
+.toast--success svg { color: var(--safe); }
+.toast--error { border-color: var(--unsafe); }
+.toast--error svg { color: var(--unsafe); }
+.toast--info svg { color: var(--accent); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* -----------------------------------------------------------------------------
+   EMPTY STATE
+   -------------------------------------------------------------------------- */
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-7) var(--space-4);
+  text-align: center;
+  color: var(--text-3);
+}
+
+.empty svg { width: 30px; height: 30px; opacity: 0.6; }
+
+/* -----------------------------------------------------------------------------
+   LANDSCAPE / SHORT VIEWPORTS
+   A phone in landscape has no room for a stacked board + 74px buttons. Put the
+   board and the answers side by side instead of shrinking the tap targets.
+   -------------------------------------------------------------------------- */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --answer-height: 64px;
+    --appbar-height: 44px;
+  }
+
+  .screen--play {
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 34%);
+    grid-template-areas:
+      "bar bar"
+      "stage actions";
+  }
+
+  .screen--play > .app-bar { grid-area: bar; }
+  .screen--play > .stage { grid-area: stage; }
+  .screen--play > .action-bar {
+    grid-area: actions;
+    display: grid;
+    align-content: center;
+    background: none;
+  }
+
+  .answers { grid-template-columns: 1fr; }
+}
+
+/* Very tall phones: let the board breathe a little more. */
+@media (min-height: 850px) {
+  :root { --answer-height: 80px; }
+}
+
+/* -----------------------------------------------------------------------------
+   LARGE SCREENS — the mobile-first 560px cap wastes a desktop display entirely.
+
+   This matters most for the 3D board, and specifically for what it is FOR: the
+   app trains over-the-board vision, and a defining part of a real board is that
+   it is large and you take it in as a whole. A 560px board on a 27" monitor
+   trains the opposite habit. A big screen is the one place we can approximate
+   the real thing, so it should be used.
+
+   Two changes are needed, and the second matters more than the first. Raising
+   --board-max alone achieves little, because a square board on a wide display is
+   limited by HEIGHT, not width, once the action bar is stacked underneath it. So
+   we also borrow the side-by-side layout already written for landscape phones:
+   board beside the answers rather than above them, which hands the board the
+   full height of the window.
+
+   The board stays min(100cqi, 100cqb - reserve, --board-max), so the
+   container-height term still guarantees it can never overflow the stage.
+   -------------------------------------------------------------------------- */
+@media (min-width: 900px) {
+  :root { --board-max: 680px; --content-max: 680px; }
+}
+
+@media (min-width: 900px) and (min-height: 620px) {
+  .screen--play {
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 30%);
+    grid-template-areas:
+      "bar bar"
+      "stage actions";
+  }
+
+  .screen--play > .app-bar { grid-area: bar; }
+  .screen--play > .stage { grid-area: stage; }
+  .screen--play > .action-bar {
+    grid-area: actions;
+    display: grid;
+    align-content: center;
+    background: none;
+  }
+
+  /* Stacked, so each answer keeps a large hit area instead of splitting a
+     narrow column in two. */
+  .answers { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 1280px) and (min-height: 800px) {
+  :root { --board-max: 860px; }
+}
+
+@media (min-width: 1680px) and (min-height: 950px) {
+  :root { --board-max: 1040px; }
+}
+
+/* -----------------------------------------------------------------------------
+   REDUCED MOTION — tokens already collapse the durations; this removes the
+   keyframe animations that convey nothing without movement.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .spinner { animation: none; border-top-color: var(--accent); }
+  .skeleton { animation: none; background: var(--surface-2); }
+  .readout--timer.is-critical .readout__value { animation: none; }
+  .board-frame.is-wrong,
+  .answer.is-wrong { animation: none; }
+}
+
+/* -----------------------------------------------------------------------------
+   FORCED COLORS (Windows high contrast / iOS increase contrast)
+   -------------------------------------------------------------------------- */
+@media (forced-colors: active) {
+  .answer,
+  .btn,
+  .mode-card,
+  .band,
+  .history-item {
+    border: 1px solid ButtonBorder;
+  }
+
+  .history-item__rail { forced-color-adjust: none; }
+}

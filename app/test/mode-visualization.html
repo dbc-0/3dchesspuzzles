@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>visualization.js -- test harness</title>
+<!-- Only resolved if ?renderer=3d asks for board3d.js -- mirrors app/test/board3d.html's own
+     import map so three.js loads from app/vendor/three/ with no CDN and no build step. -->
+<script type="importmap">
+{ "imports": { "three": "../vendor/three/three.module.min.js" } }
+</script>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+  body { padding: 16px; padding-bottom: 48px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-family: var(--font-display); }
+  p.sub { color: var(--text-3); margin: 0 0 16px; font-size: 13px; }
+  .layout { display: grid; grid-template-columns: 420px 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .phone {
+    width: 390px; height: 844px; margin: 0 auto; border-radius: 40px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35); border: 1px solid var(--border);
+  }
+  .phone .app-shell { --shell-height: 844px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  button.tool { font: inherit; padding: 6px 11px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-3); color: var(--text); cursor: pointer; }
+  button.tool:hover { border-color: var(--accent); }
+  #assert-result { font-weight: 600; padding: 6px 10px; border-radius: 6px; display: inline-block; margin-bottom: 12px; }
+  #assert-result.pass { background: var(--safe-soft); color: var(--safe); }
+  #assert-result.fail { background: var(--unsafe-soft); color: var(--unsafe); }
+  #log { height: 320px; overflow-y: auto; background: #000; color: #9dffb0; font: 12px/1.5 ui-monospace, Menlo, monospace; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); }
+  #log .err { color: #ff8a80; }
+  #log .warn { color: #ffd479; }
+  #log div { white-space: pre-wrap; word-break: break-word; }
+</style>
+</head>
+<body>
+
+<h1>visualization.js -- test harness</h1>
+<p class="sub">
+  Standalone exercise of createMode() from mode-interface.js's ModeContext contract, with a
+  stub data layer (hand-written puzzles, no network), a REAL app/js/rating.js engine backed
+  by an in-memory store, and a real board2d.js. Query params:
+  <code>?p=basic|promo|multiline</code> forces which stub puzzle ctx.data.pick() serves,
+  <code>&plies=N</code> forces ctx.config.plies, <code>&variant=timed|survival|practice</code>,
+  <code>&perspective=own|opponent</code>,
+  <code>&band=N</code> (only set to force fixed-band practice mode instead of rated play).
+</p>
+
+<div id="assert-result">window.__harness: booting&hellip;</div>
+
+<div class="layout">
+  <div class="phone">
+    <div class="app-shell">
+      <div class="screen screen--play" id="ctx-root"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <div class="row">
+        <button class="tool" data-action="restart">handle.restart()</button>
+        <button class="tool" data-action="pause">handle.pause()</button>
+        <button class="tool" data-action="resume">handle.resume()</button>
+        <button class="tool" data-action="destroy">handle.destroy()</button>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="confirm-toggle" checked> ctx.ui.confirm() resolves true</label>
+      </div>
+    </div>
+    <h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3)">Log</h2>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { createMode } from '../js/modes/visualization.js';
+  import { createRating } from '../js/rating.js';
+
+  // ?renderer=3d swaps board3d.js in for board2d.js -- same createBoard(container, options)
+  // shape, so nothing else in this harness needs to know which one is live. This is what lets
+  // the two-tap answering mechanism (which is the actual risk in 3D: onSquareTap has to
+  // resolve against the board plane, not piece meshes, for a tap on a square that looks empty
+  // in a stale position -- see board3d.js's pickPlaneSquare()) be driven against the real
+  // renderer instead of only reasoned about from source.
+  const rendererParam = new URLSearchParams(location.search).get('renderer') === '3d' ? '3d' : '2d';
+  const { createBoard } = rendererParam === '3d'
+    ? await import('../js/board3d.js')
+    : await import('../js/board2d.js');
+  window.__renderer = rendererParam;
+
+  const logEl = document.getElementById('log');
+  function log(msg, kind) {
+    const line = document.createElement('div');
+    if (kind) line.className = kind;
+    const t = new Date().toISOString().split('T')[1].replace('Z', '');
+    line.textContent = `[${t}] ${msg}`;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+    // eslint-disable-next-line no-console
+    console.log('[harness]', msg);
+  }
+  window.addEventListener('error', (e) => log(`window error: ${e.message}`, 'err'));
+  window.addEventListener('unhandledrejection', (e) => log(`unhandled rejection: ${e.reason}`, 'err'));
+
+  // Same three hand-written, chess.js-verified puzzles as mode-tactics.html's harness.
+  const PUZZLES = {
+    basic: {
+      i: 'test-basic', r: 1200,
+      f: '4k3/8/8/8/8/8/8/2b1K1Q1 w - - 0 1',
+      p: [], d: 0,
+      m: ['g1e3', 'c1e3'],
+      e: 0, u: 'https://lichess.org/abcdefgh', t: 'test',
+    },
+    promo: {
+      i: 'test-promo', r: 1500,
+      f: 'r3k3/6P1/8/8/8/8/8/4K3 b - - 0 1',
+      p: [], d: 0,
+      m: ['a8b8', 'g7g8q'],
+      e: 0, u: '', t: 'test',
+    },
+    multiline: {
+      i: 'test-multiline', r: 1600,
+      f: '4k3/8/8/8/8/8/R7/4K3 w - - 0 1',
+      p: ['Ra1'], d: 1,
+      m: ['e8d7', 'a1a7', 'd7e6', 'e1e2'],
+      e: 0, u: '', t: 'test',
+    },
+    // A long, chess.js-verified quiet run (12 half-moves of ordinary opening theory) purely
+    // to exercise the move-list banner at a realistic wrapping length -- see the
+    // --stage-reserve layout tests, which need the banner to actually grow to several lines.
+    long: {
+      i: 'test-long', r: 1300,
+      f: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      p: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5', 'O-O', 'Nf6', 'd3', 'd6', 'Bg5', 'h6'],
+      d: 12,
+      m: ['g5h4', 'f6e4'],
+      e: 0, u: '', t: 'test',
+    },
+  };
+
+  const params = new URLSearchParams(location.search);
+  const forcedKey = params.get('p') && PUZZLES[params.get('p')] ? params.get('p') : null;
+  const variant = params.get('variant') || 'practice';
+  const perspective = params.get('perspective') === 'opponent' ? 'opponent' : 'own';
+  const pliesParam = params.get('plies');
+
+  window.__pickLog = [];
+  function createStubData() {
+    return {
+      async ready() { return { band: 100, bands: [] }; },
+      async pick(opts) {
+        window.__lastPickOpts = opts;
+        const key = forcedKey || Object.keys(PUZZLES)[window.__pickLog.length % 3];
+        window.__pickLog.push(key);
+        log(`ctx.data.pick(${JSON.stringify(opts)}) -> "${key}"`);
+        return JSON.parse(JSON.stringify(PUZZLES[key]));
+      },
+      async prefetchAround() {},
+      async ensureBand() { return []; },
+      bandFor() { return 0; },
+      index: null,
+      bands: [],
+      loadedCount: 0,
+      clearRecent() {},
+    };
+  }
+
+  const boardHost = document.createElement('div');
+  boardHost.style.width = '100%';
+  // Visualization answers by tapping raw squares on a deliberately stale board -- never by
+  // dragging -- so this board is created non-interactive; setSquareTapHandler (which the
+  // returned handle already exposes natively, per board-interface.js) is all this mode uses.
+  const innerBoard = createBoard(boardHost, { interactive: false, coordinates: true });
+  // Observability-only passthrough: every square the LIVE handler (installed by the mode)
+  // resolves is echoed to window.__lastSquareTap first, purely so a test can confirm what a
+  // real click/tap on the canvas actually resolved to -- this changes nothing about behaviour.
+  // ?calibrate=1: the camera seat is still set up by the real mode (deterministic given the
+  // same puzzle id + orientation, per seedFor()), but taps are NOT forwarded into its FSM --
+  // this is what lets a test freely grid-probe screen positions against a real, mode-driven
+  // 3D camera without a stray "attempt" resolving the puzzle mid-probe and locking further
+  // taps out. A later, fresh page load of the identical URL (minus calibrate=1) reproduces
+  // the same camera and can reuse the discovered pixel coordinates for real.
+  window.__calibrationMode = new URLSearchParams(location.search).get('calibrate') === '1';
+  let liveSquareTapHandler = null;
+  const rawBoard = Object.assign(Object.create(null), innerBoard, {
+    setSquareTapHandler(fn) {
+      liveSquareTapHandler = typeof fn === 'function' ? fn : null;
+      return innerBoard.setSquareTapHandler((sq) => {
+        window.__lastSquareTap = sq;
+        if (liveSquareTapHandler && !window.__calibrationMode) liveSquareTapHandler(sq);
+      });
+    },
+  });
+  window.__board = rawBoard;
+
+  // ---- rating: the REAL app/js/rating.js engine, backed by an in-memory store -------------
+  const memoryStore = new Map();
+  const rating = createRating({
+    get: (k) => memoryStore.get(k),
+    set: (k, v) => memoryStore.set(k, v),
+  });
+  // rating.js's `plies` bucket axis is a STRING ('0' | '2' | ...) and defaults to '0' -- this
+  // mirrors visualization.js's own "unset means 0" default so the bucket a real shell would
+  // bind (from its setup-screen plies selector) matches what this harness actually requests.
+  const effectivePlies = pliesParam !== null && pliesParam !== '' ? String(Number(pliesParam) | 0) : '0';
+  const bucket = { mode: 'visualization', board: '2d', promptStyle: 'highlight', perspective, framing: 'offensive', plies: effectivePlies };
+  window.__rating = rating;
+  window.__bucket = bucket;
+  window.__statsLog = [];
+
+  const config = {
+    variant,
+    perspective,
+    // Only set when the URL explicitly asks for it -- otherwise undefined, so
+    // visualization.js falls through to ctx.rating.nextTarget() (adaptive rated play).
+    band: params.has('band') ? Number(params.get('band')) : undefined,
+    strikes: Number(params.get('strikes')) || 3,
+    seconds: Number(params.get('seconds')) || 180,
+  };
+  if (pliesParam !== null && pliesParam !== '') config.plies = Number(pliesParam);
+
+  const ctx = {
+    root: document.getElementById('ctx-root'),
+    board: rawBoard,
+    boardEl: boardHost,
+    data: createStubData(),
+    settings: {},
+    config,
+    ui: {
+      toast(msg) { log(`ui.toast: ${JSON.stringify(msg)}`); },
+      async confirm(opts) {
+        log(`ui.confirm: ${JSON.stringify(opts)}`);
+        return document.getElementById('confirm-toggle').checked;
+      },
+      haptic(kind) { log(`ui.haptic(${kind})`); },
+      sound(kind) { log(`ui.sound(${kind})`); },
+      // Mirrors app.js's setHeader(): an Element/Fragment replaces the
+      // `[data-shell="header"]` slot's children wholesale. See mode-tactics.html's harness
+      // for the fuller comment; visualization.js only ever uses the Node form too.
+      setHeader(spec) {
+        log(`ui.setHeader(${spec instanceof Node ? '<Node>' : JSON.stringify(spec)})`);
+        const slot = document.querySelector('[data-shell="header"]');
+        if (!slot) return;
+        if (spec == null) { slot.replaceChildren(); return; }
+        if (typeof spec === 'string') { slot.textContent = spec; return; }
+        if (spec instanceof Node) { slot.replaceChildren(spec); return; }
+      },
+    },
+    rating: {
+      get bucket() { return rating.bucketKey(bucket); },
+      get: () => rating.get(bucket),
+      nextTarget: () => rating.nextTarget(bucket),
+      record: (puzzleRating, score) => {
+        const next = rating.record(bucket, puzzleRating, score);
+        window.__statsLog.push({ kind: 'rated', bucket: rating.bucketKey(bucket), puzzleRating, score, next });
+        return next;
+      },
+    },
+    stats: {
+      record(kind, payload) {
+        log(`ctx.stats.record(${kind}, ${JSON.stringify(payload)})`);
+        window.__statsLog.push({ kind, payload });
+      },
+      query() { return []; },
+    },
+    onFinish(summary) {
+      window.__lastSummary = summary;
+      log(`ctx.onFinish: ${JSON.stringify(summary)}`);
+      document.getElementById('assert-result').textContent = `Finished: ${summary.headline}`;
+      document.getElementById('assert-result').className = 'pass';
+    },
+  };
+  window.__ctx = ctx;
+
+  const handle = createMode(ctx);
+  window.__handle = handle;
+  document.getElementById('assert-result').textContent = 'window.__handle: mounted, ready for driving';
+  document.getElementById('assert-result').className = 'pass';
+  log('Mode mounted.');
+
+  document.querySelectorAll('button.tool').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.action;
+      if (typeof handle[action] === 'function') { handle[action](); log(`handle.${action}() called`); }
+    });
+  });
+</script>
+</body>
+</html>

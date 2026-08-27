@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Design system — Chess Tactics Trainer</title>
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+<style>
+/* ===========================================================================
+   GALLERY CHROME ONLY.
+   Everything with a .gal- prefix exists to display the design system and is
+   NOT part of the shipped app. The app itself is tokens.css + app.css.
+   =========================================================================== */
+body {
+  background: var(--surface-inset);
+  padding-bottom: var(--space-10);
+}
+
+.gal-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-glass);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid var(--border);
+}
+
+.gal-topbar__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-tight);
+  margin-right: auto;
+}
+
+.gal-wrap {
+  max-width: 1240px;
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-5);
+  display: grid;
+  gap: var(--space-9);
+}
+
+.gal-section { display: grid; gap: var(--space-4); min-width: 0; }
+
+.gal-section > header { display: grid; gap: var(--space-1); max-width: 74ch; }
+
+.gal-h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-heavy);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--lh-snug);
+}
+
+.gal-h2::before {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  margin-bottom: var(--space-2);
+}
+
+.gal-lede { font-size: var(--fs-md); color: var(--text-2); }
+
+.gal-note {
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  max-width: 74ch;
+  line-height: var(--lh-relaxed);
+}
+
+.gal-note code, .gal-code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--surface-3);
+  color: var(--text);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+
+/* --- Panels for loose components ---------------------------------------- */
+.gal-panel {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+/* Standalone board sample. .board-frame sizes itself from container-query
+   units; outside a .stage there is no size container, so cqi/cqb would fall
+   back to the viewport. This wrapper gives it a local one, which is also
+   how it behaves in the real app. */
+.gal-board-demo {
+  container-type: size;
+  height: 320px;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+}
+
+.gal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.gal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.gal-stack { display: grid; gap: var(--space-3); }
+
+.gal-label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* --- iPhone device frames ------------------------------------------------ */
+.gal-devices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-7) var(--space-6);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+/* Narrower than two device frames: turn the row into a horizontally snapped
+   strip so the DEVICES scroll sideways and the PAGE never does. */
+@media (max-width: 900px) {
+  .gal-devices {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    margin-inline: calc(var(--space-5) * -1);
+    padding: 0 var(--space-5) var(--space-3);
+  }
+  .gal-device { scroll-snap-align: center; }
+}
+
+.gal-device { display: grid; gap: var(--space-2); justify-items: center; }
+
+.gal-device__caption {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-2);
+  text-align: center;
+  max-width: 417px;
+}
+
+.gal-device__caption span {
+  display: block;
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+/* Inner screen is 393 x 852 = iPhone 15/16 Pro logical viewport.
+   The 12px bezel is added on top (box-sizing is border-box everywhere). */
+.device {
+  position: relative;
+  width: 417px;
+  height: 876px;
+  border-radius: 54px;
+  padding: 12px;
+  background: linear-gradient(160deg, #3d434b, #16191d 45%, #2c3138);
+  box-shadow: var(--shadow-4), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  flex: none;
+}
+
+.device--short { width: 399px; height: 691px; border-radius: 46px; }
+
+.device__screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 42px;
+  overflow: hidden;
+  background: var(--bg);
+  /* The app shell fills the simulated screen instead of the real viewport,
+     and we simulate the notch + home-indicator insets. */
+  --shell-height: 100%;
+  --inset-top: 44px;
+  --inset-bottom: 34px;
+}
+
+.device--short .device__screen { border-radius: 36px; --inset-top: 20px; --inset-bottom: 0px; }
+
+/* Decorative status bar drawn over the reserved --inset-top area. */
+.device__status {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 26px;
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  pointer-events: none;
+  z-index: 200;
+}
+
+.device__notch {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 112px;
+  height: 30px;
+  border-radius: 999px;
+  background: #000;
+  z-index: 210;
+  pointer-events: none;
+}
+
+.device__home {
+  position: absolute;
+  bottom: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 138px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--text);
+  opacity: 0.35;
+  z-index: 210;
+  pointer-events: none;
+}
+
+/* Gallery-only board stand-in. The real renderer mounts into .board-slot. */
+.gal-board-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: #0f1720;
+  background: rgba(255, 255, 255, 0.16);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.gal-board-placeholder em {
+  font-style: normal;
+  font-weight: var(--fw-regular);
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.75;
+}
+
+/* Fake highlighted squares so the board tokens are visible in review. */
+.gal-hl {
+  position: absolute;
+  width: 12.5%;
+  height: 12.5%;
+}
+.gal-hl--from { background: var(--hl-move); left: 50%;   top: 62.5%; }
+.gal-hl--to   { background: var(--hl-move); left: 62.5%; top: 37.5%; }
+.gal-hl--ok   { background: var(--hl-success); left: 25%; top: 25%; }
+.gal-hl--err  { background: var(--hl-error);   left: 25%; top: 25%; }
+.gal-hl--hint { background: var(--hl-hint);    left: 37.5%; top: 75%; }
+.gal-hl--sel  { background: var(--hl-select);  left: 12.5%; top: 50%; }
+
+/* Sample coordinate labels, to review --board-coord-on-* against the squares. */
+.gal-coord {
+  position: absolute;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+}
+.gal-coord--on-light { color: var(--board-coord-on-light); }
+.gal-coord--on-dark  { color: var(--board-coord-on-dark); }
+
+/* Flat albedo discs. The real pieces are shaded geometry; these only show how
+   far each piece albedo sits from each square colour. */
+.gal-piece {
+  position: absolute;
+  width: 9.5%;
+  height: 9.5%;
+  border-radius: 50%;
+}
+
+/* --- Token documentation tables ----------------------------------------- */
+.gal-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: var(--space-3);
+}
+
+.gal-swatch {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.gal-swatch__chip {
+  height: 46px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--divider);
+}
+
+.gal-swatch__name {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--text);
+  word-break: break-all;
+}
+
+.gal-swatch__use { font-size: var(--fs-2xs); color: var(--text-3); }
+
+.gal-type-row {
+  display: grid;
+  grid-template-columns: 96px 62px 1fr;
+  gap: var(--space-4);
+  align-items: baseline;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--divider);
+}
+
+.gal-type-row > code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.gal-space-row {
+  display: grid;
+  grid-template-columns: 96px 56px 1fr;
+  gap: var(--space-3);
+  align-items: center;
+  padding-block: 5px;
+}
+
+.gal-space-bar { height: 14px; border-radius: 3px; background: var(--accent); }
+
+.gal-radius-demo {
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  border: 2px solid var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--accent);
+}
+
+.gal-shadow-demo {
+  height: 74px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--text-2);
+}
+
+.gal-checks { display: grid; gap: var(--space-2); margin: 0; padding-left: var(--space-5); }
+.gal-checks li { font-size: var(--fs-sm); color: var(--text-2); line-height: var(--lh-relaxed); }
+
+/* Very narrow phones: the three-column doc tables cannot hold their fixed
+   columns plus a display-size specimen, so stack them and let the specimen
+   scroll inside its own cell rather than widening the page. */
+@media (max-width: 560px) {
+  .gal-type-row { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); }
+  .gal-type-row > :last-child { overflow-x: auto; }
+  .gal-space-row { grid-template-columns: 84px 46px minmax(0, 1fr); }
+  .gal-radius-demo { width: 62px; height: 62px; }
+}
+
+/* Static (non-floating) rendering of the verdict pill for the component
+   gallery. Cancels the entry animation, which would otherwise keep applying
+   its translateX(-50%) and pull the pill off the left edge. */
+.gal-static-verdict {
+  position: static !important;
+  transform: none !important;
+  animation: none !important;
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== ICON SPRITE (inline, offline) ===================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <g id="i-base" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></g>
+  </defs>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>
+  </symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 4L2.5 20h19z"/><path d="M12 10v4"/><path d="M12 17.5h.01"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.5 12.5l5 5 10-11"/>
+  </symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 6l12 12M18 6L6 18"/>
+  </symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/>
+  </symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 2L4 14h6l-1 8 9-12h-6z"/>
+  </symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 20s-7-4.4-7-9.5A3.9 3.9 0 0112 8a3.9 3.9 0 017 2.5c0 5.1-7 9.5-7 9.5z"/>
+  </symbol>
+  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/>
+  </symbol>
+  <symbol id="i-puzzle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 4h6v3a2 2 0 104 0h1v6h-3a2 2 0 100 4h3v3H9v-3a2 2 0 10-4 0H4v-6h3a2 2 0 100-4H4V7h5z"/>
+  </symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 3l18 18"/><path d="M10.6 5.3A9.6 9.6 0 0112 5c5.5 0 9 6 9 6a15 15 0 01-3.2 3.9"/>
+    <path d="M6.3 6.5A15 15 0 003 11s3.5 6 9 6a9.3 9.3 0 004.2-1"/><path d="M9.9 9.9a3 3 0 004.2 4.2"/>
+  </symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 5l7 7-7 7"/>
+  </symbol>
+  <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 5l-7 7 7 7"/>
+  </symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 11a8 8 0 10-1.6 5.6"/><path d="M20 5v6h-6"/>
+  </symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M12 3l1.3 2.3 2.6-.4.5 2.6 2.3 1.2-1.2 2.3 1.2 2.3-2.3 1.2-.5 2.6-2.6-.4L12 21l-1.3-2.3-2.6.4-.5-2.6-2.3-1.2L6.5 13 5.3 10.7l2.3-1.2.5-2.6 2.6.4z"/>
+  </symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5h.01"/>
+  </symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 9v6h3l4 4V5L8 9z"/><path d="M16 9.5a3.5 3.5 0 010 5"/>
+  </symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5"/><path d="M12 12v9"/>
+  </symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>
+  </symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 14.5A8.5 8.5 0 019.5 4 8.5 8.5 0 1020 14.5z"/>
+  </symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>
+  </symbol>
+</svg>
+
+<!-- ============================== TOP BAR ================================= -->
+<div class="gal-topbar">
+  <div class="gal-topbar__title">Tactics Trainer — Design System</div>
+  <div class="segmented" role="group" aria-label="Theme">
+    <label class="segmented__option"><input type="radio" name="gal-theme" value="light"><span>Light</span></label>
+    <label class="segmented__option"><input type="radio" name="gal-theme" value="system"><span>System</span></label>
+    <label class="segmented__option"><input type="radio" name="gal-theme" value="dark" checked><span>Dark</span></label>
+  </div>
+</div>
+
+<div class="gal-wrap">
+
+<!-- ============================ 0. OVERVIEW =============================== -->
+<section class="gal-section">
+  <header>
+    <h2 class="gal-h2">The idea</h2>
+    <p class="gal-lede">
+      A <strong>fixed instrument panel</strong>, not a page. Three rows that never move:
+      readouts on top, board in the middle sized to whatever is left over, and the two
+      answer buttons pinned in the thumb zone. Nothing scrolls during play, so
+      <code class="gal-code">scrollToBottom()</code> has nothing left to do.
+    </p>
+  </header>
+  <div class="gal-panel">
+    <ul class="gal-checks">
+      <li><strong>Fixed shell.</strong> <code class="gal-code">100dvh</code> + <code class="gal-code">env(safe-area-inset-*)</code>, <code class="gal-code">overflow:hidden</code>, <code class="gal-code">overscroll-behavior:none</code>. The board sizes itself from container-query units, so it shrinks to fit rather than pushing the buttons off-screen.</li>
+      <li><strong>Thumb-first.</strong> Answer buttons are 74&nbsp;pt tall (80 on tall phones), full half-width each, with a 16&nbsp;px dead gutter between them. Secondary controls are 40&nbsp;pt, live in the top corners outside the thumb arc, and anything destructive is gated behind a confirm sheet.</li>
+      <li><strong>Never colour-only.</strong> Safe/Unsafe differ in hue <em>and</em> lightness and each carries an icon plus a word. Feedback adds a ring and motion. The history list adds a rail, an icon and a verdict label.</li>
+      <li><strong>No numeric jitter.</strong> Every live number uses tabular figures, and the countdown digit has a fixed advance width.</li>
+      <li><strong>Themes.</strong> Light and dark, following the OS by default; <code class="gal-code">data-theme</code> on <code class="gal-code">&lt;html&gt;</code> overrides in both directions. Board palettes are tuned per theme — warm wood in light, cool slate in dark, because a bright wood board glares at night.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ========================== 1. SCREEN STATES ============================ -->
+<section class="gal-section">
+  <header>
+    <h2 class="gal-h2">Screen states</h2>
+    <p class="gal-lede">
+      Rendered at 393&nbsp;&times;&nbsp;852 (iPhone 15/16 Pro), with the notch and
+      home-indicator insets simulated. Toggle the theme above to check both.
+    </p>
+  </header>
+
+  <div class="gal-devices">
+
+    <!-- ---------------------------- LOADING ---------------------------- -->
+    <div class="gal-device">
+      <div class="device">
+        <div class="device__screen">
+          <div class="device__status"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+          <div class="device__notch"></div>
+          <div class="app-shell">
+            <div class="loading">
+              <div class="spinner" role="status" aria-label="Loading"></div>
+              <h1 class="loading__title">Blunder Rush</h1>
+              <p class="loading__status">Caching the puzzle database for offline play&hellip;</p>
+              <div class="progress"><div class="progress__bar" style="width:64%"></div></div>
+              <p class="u-caps u-num">64% &middot; 12,480 / 19,500</p>
+            </div>
+          </div>
+          <div class="device__home"></div>
+        </div>
+      </div>
+      <p class="gal-device__caption">Loading<span>First run only; cached after that</span></p>
+    </div>
+
+    <!-- -------------------------- MODE SELECT -------------------------- -->
+    <div class="gal-device">
+      <div class="device">
+        <div class="device__screen">
+          <div class="device__status"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+          <div class="device__notch"></div>
+          <div class="app-shell">
+            <div class="screen screen--menu">
+              <header class="app-bar">
+                <span></span>
+                <div class="app-bar__title">Tactics Trainer</div>
+                <button class="icon-btn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+              </header>
+
+              <div class="screen-body u-scroll">
+                <div class="screen-body__inner">
+                  <div class="hero">
+                    <h1 class="hero__title">Pick a drill</h1>
+                    <p class="hero__subtitle">Best today: <strong class="u-num">27</strong> &middot; Rating <strong class="u-num">1450</strong></p>
+                  </div>
+
+                  <div class="mode-list">
+                    <button class="mode-card mode-card--rush is-selected">
+                      <span class="mode-card__icon"><svg><use href="#i-bolt"/></svg></span>
+                      <span class="mode-card__body">
+                        <span class="mode-card__title">Blunder Rush</span>
+                        <span class="mode-card__desc">Safe or unsafe, as many as you can</span>
+                        <span class="mode-card__meta">5 min &middot; 3 strikes</span>
+                      </span>
+                      <span class="mode-card__chevron"><svg><use href="#i-chevron"/></svg></span>
+                    </button>
+
+                    <button class="mode-card mode-card--survival">
+                      <span class="mode-card__icon"><svg><use href="#i-heart"/></svg></span>
+                      <span class="mode-card__body">
+                        <span class="mode-card__title">Survival</span>
+                        <span class="mode-card__desc">No clock. Three mistakes and out</span>
+                        <span class="mode-card__meta">Untimed &middot; 3 strikes</span>
+                      </span>
+                      <span class="mode-card__chevron"><svg><use href="#i-chevron"/></svg></span>
+                    </button>
+
+                    <button class="mode-card mode-card--rated">
+                      <span class="mode-card__icon"><svg><use href="#i-target"/></svg></span>
+                      <span class="mode-card__body">
+                        <span class="mode-card__title">Rated Practice</span>
+                        <span class="mode-card__desc">Drill one Elo band until it sticks</span>
+                        <span class="mode-card__meta">Pick a band</span>
+                      </span>
+                      <span class="mode-card__chevron"><svg><use href="#i-chevron"/></svg></span>
+                    </button>
+
+                    <button class="mode-card mode-card--classic">
+                      <span class="mode-card__icon"><svg><use href="#i-puzzle"/></svg></span>
+                      <span class="mode-card__body">
+                        <span class="mode-card__title">Classic Tactics</span>
+                        <span class="mode-card__desc">Find and play the winning move</span>
+                        <span class="mode-card__meta">Untimed</span>
+                      </span>
+                      <span class="mode-card__chevron"><svg><use href="#i-chevron"/></svg></span>
+                    </button>
+
+                    <button class="mode-card mode-card--blind">
+                      <span class="mode-card__icon"><svg><use href="#i-eye-off"/></svg></span>
+                      <span class="mode-card__body">
+                        <span class="mode-card__title">Blindfold</span>
+                        <span class="mode-card__desc">Track the position in your head</span>
+                        <span class="mode-card__meta">Hard</span>
+                      </span>
+                      <span class="mode-card__chevron"><svg><use href="#i-chevron"/></svg></span>
+                    </button>
+                  </div>
+
+                  <div class="band-picker">
+                    <div class="band-picker__head">
+                      <span class="section__title">Rating band</span>
+                      <span class="band-picker__current u-num">1400&ndash;1600</span>
+                    </div>
+                    <div class="band-row u-scroll-x" role="radiogroup" aria-label="Rating band">
+                      <button class="band" role="radio" aria-checked="false"><span class="band__range u-num">600&ndash;800</span><span class="band__label">Beginner</span></button>
+                      <button class="band" role="radio" aria-checked="false"><span class="band__range u-num">800&ndash;1000</span><span class="band__label">Casual</span></button>
+                      <button class="band" role="radio" aria-checked="false"><span class="band__range u-num">1000&ndash;1200</span><span class="band__label">Club</span></button>
+                      <button class="band" role="radio" aria-checked="false"><span class="band__range u-num">1200&ndash;1400</span><span class="band__label">Strong</span></button>
+                      <button class="band" role="radio" aria-checked="true"><span class="band__range u-num">1400&ndash;1600</span><span class="band__label">Advanced</span></button>
+                      <button class="band" role="radio" aria-checked="false"><span class="band__range u-num">1600&ndash;1800</span><span class="band__label">Expert</span></button>
+                      <button class="band" role="radio" aria-checked="false"><span class="band__range u-num">1800+</span><span class="band__label">Master</span></button>
+                    </div>
+                  </div>
+
+                  <div class="section">
+                    <span class="section__title">Board</span>
+                    <div class="segmented segmented--block" role="group" aria-label="Board renderer">
+                      <label class="segmented__option"><input type="radio" name="demo-board" checked><span>2D</span></label>
+                      <label class="segmented__option"><input type="radio" name="demo-board"><span>3D</span></label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="action-bar">
+                <div class="action-bar__inner">
+                  <button class="btn btn--primary btn--lg btn--block">
+                    <svg><use href="#i-bolt"/></svg> Start Blunder Rush
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="device__home"></div>
+        </div>
+      </div>
+      <p class="gal-device__caption">Mode select<span>The only pre-game screen that scrolls &mdash; opt-in via <code class="gal-code">.u-scroll</code></span></p>
+    </div>
+
+    <!-- ------------------------ PLAY — AWAITING ------------------------ -->
+    <div class="gal-device">
+      <div class="device">
+        <div class="device__screen">
+          <div class="device__status"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+          <div class="device__notch"></div>
+          <div class="app-shell">
+            <div class="screen screen--play">
+              <header class="app-bar">
+                <button class="icon-btn icon-btn--danger" aria-label="Restart"><svg><use href="#i-refresh"/></svg></button>
+                <div class="readouts">
+                  <div class="readout readout--score">
+                    <span class="readout__label">Score</span>
+                    <span class="readout__value u-num">14</span>
+                  </div>
+                  <div class="readout readout--timer">
+                    <span class="readout__label">Time</span>
+                    <span class="readout__value u-num">3:42</span>
+                  </div>
+                  <div class="readout readout--strikes">
+                    <span class="readout__label">Strikes</span>
+                    <span class="strikes" role="img" aria-label="1 of 3 strikes used">
+                      <span class="strikes__pip is-spent"></span>
+                      <span class="strikes__pip"></span>
+                      <span class="strikes__pip"></span>
+                    </span>
+                  </div>
+                </div>
+                <button class="icon-btn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+              </header>
+
+              <div class="stage">
+                <div class="prompt">
+                  <span class="prompt__side" data-side="white"></span>
+                  <span class="prompt__label">Next move</span>
+                  <span class="prompt__move">Nxe5</span>
+                </div>
+                <div class="board-area">
+                  <div class="board-frame">
+                    <div class="board-slot">
+                      <div class="gal-hl gal-hl--from"></div>
+                      <div class="gal-hl gal-hl--to"></div>
+                      <div class="gal-board-placeholder">Board renderer<em>board2d.js / board3d.js mounts here</em></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="stage__meta">
+                  <span><svg><use href="#i-target"/></svg> Rating <span class="u-num">1480</span></span>
+                  <span class="stage__meta-sep"></span>
+                  <span class="stage__meta-streak"><svg><use href="#i-bolt"/></svg> 6 in a row</span>
+                </div>
+              </div>
+
+              <div class="action-bar">
+                <div class="action-bar__inner">
+                  <div class="answers">
+                    <button class="answer answer--safe">
+                      <svg><use href="#i-shield"/></svg>
+                      Safe
+                    </button>
+                    <button class="answer answer--unsafe">
+                      <svg><use href="#i-alert"/></svg>
+                      Unsafe
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="device__home"></div>
+        </div>
+      </div>
+      <p class="gal-device__caption">Mid-game &mdash; awaiting answer<span>Board fits the leftover space; buttons never move</span></p>
+    </div>
+
+    <!-- ------------------------ PLAY — CORRECT ------------------------- -->
+    <div class="gal-device">
+      <div class="device">
+        <div class="device__screen">
+          <div class="device__status"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+          <div class="device__notch"></div>
+          <div class="app-shell">
+            <div class="screen screen--play">
+              <header class="app-bar">
+                <button class="icon-btn icon-btn--danger" aria-label="Restart"><svg><use href="#i-refresh"/></svg></button>
+                <div class="readouts">
+                  <div class="readout readout--score">
+                    <span class="readout__label">Score</span>
+                    <span class="readout__value u-num is-bumped">15</span>
+                  </div>
+                  <div class="readout readout--timer is-warning">
+                    <span class="readout__label">Time</span>
+                    <span class="readout__value u-num">0:48</span>
+                  </div>
+                  <div class="readout readout--strikes">
+                    <span class="readout__label">Strikes</span>
+                    <span class="strikes" role="img" aria-label="1 of 3 strikes used">
+                      <span class="strikes__pip is-spent"></span>
+                      <span class="strikes__pip"></span>
+                      <span class="strikes__pip"></span>
+                    </span>
+                  </div>
+                </div>
+                <button class="icon-btn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+              </header>
+
+              <div class="stage">
+                <div class="prompt">
+                  <span class="prompt__side" data-side="white"></span>
+                  <span class="prompt__label">Next move</span>
+                  <span class="prompt__move">Nxe5</span>
+                </div>
+                <div class="board-area">
+                  <div class="board-frame is-correct">
+                    <div class="board-slot">
+                      <div class="gal-hl gal-hl--ok"></div>
+                      <div class="gal-hl gal-hl--to"></div>
+                      <div class="gal-board-placeholder">Board renderer<em>flash('success')</em></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="stage__meta">
+                  <span><svg><use href="#i-target"/></svg> Rating <span class="u-num">1480</span></span>
+                  <span class="stage__meta-sep"></span>
+                  <span class="stage__meta-streak"><svg><use href="#i-bolt"/></svg> 7 in a row</span>
+                </div>
+                <div class="verdict verdict--correct">
+                  <svg><use href="#i-check"/></svg> Correct
+                  <span class="verdict__delta u-num">+1</span>
+                </div>
+              </div>
+
+              <div class="action-bar">
+                <div class="action-bar__inner">
+                  <div class="answers">
+                    <button class="answer answer--safe is-correct">
+                      <svg><use href="#i-check"/></svg>
+                      Safe
+                    </button>
+                    <button class="answer answer--unsafe is-dimmed">
+                      <svg><use href="#i-alert"/></svg>
+                      Unsafe
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="device__home"></div>
+        </div>
+      </div>
+      <p class="gal-device__caption">Correct feedback<span>Ring + icon swap + verdict pill + score bump; timer in its warning state</span></p>
+    </div>
+
+    <!-- ----------------------- PLAY — INCORRECT ------------------------ -->
+    <div class="gal-device">
+      <div class="device">
+        <div class="device__screen">
+          <div class="device__status"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+          <div class="device__notch"></div>
+          <div class="app-shell">
+            <div class="screen screen--play">
+              <header class="app-bar">
+                <button class="icon-btn icon-btn--danger" aria-label="Restart"><svg><use href="#i-refresh"/></svg></button>
+                <div class="readouts">
+                  <div class="readout readout--score">
+                    <span class="readout__label">Score</span>
+                    <span class="readout__value u-num">14</span>
+                  </div>
+                  <div class="readout readout--timer is-critical">
+                    <span class="readout__label">Time</span>
+                    <span class="readout__value u-num">0:09</span>
+                  </div>
+                  <div class="readout readout--strikes">
+                    <span class="readout__label">Strikes</span>
+                    <span class="strikes" role="img" aria-label="2 of 3 strikes used">
+                      <span class="strikes__pip is-spent"></span>
+                      <span class="strikes__pip is-spent is-just-spent"></span>
+                      <span class="strikes__pip"></span>
+                    </span>
+                  </div>
+                </div>
+                <button class="icon-btn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+              </header>
+
+              <div class="stage">
+                <div class="prompt">
+                  <span class="prompt__side" data-side="black"></span>
+                  <span class="prompt__label">Next move</span>
+                  <span class="prompt__move">Qh4</span>
+                </div>
+                <div class="board-area">
+                  <div class="board-frame is-wrong">
+                    <div class="board-slot">
+                      <div class="gal-hl gal-hl--err"></div>
+                      <div class="gal-hl gal-hl--hint"></div>
+                      <div class="gal-board-placeholder">Board renderer<em>flash('error'), then solution replay</em></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="stage__meta">
+                  <span><svg><use href="#i-target"/></svg> Rating <span class="u-num">1520</span></span>
+                  <span class="stage__meta-sep"></span>
+                  <span><svg><use href="#i-x"/></svg> Streak lost</span>
+                </div>
+                <div class="verdict verdict--wrong">
+                  <svg><use href="#i-x"/></svg> Blunder &mdash; watch the reply
+                </div>
+              </div>
+
+              <div class="action-bar">
+                <div class="action-bar__inner">
+                  <div class="answers">
+                    <button class="answer answer--safe is-wrong">
+                      <svg><use href="#i-x"/></svg>
+                      Safe
+                    </button>
+                    <button class="answer answer--unsafe is-dimmed">
+                      <svg><use href="#i-alert"/></svg>
+                      Unsafe
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="device__home"></div>
+        </div>
+      </div>
+      <p class="gal-device__caption">Incorrect feedback<span>Shake + red ring + strike pip fills; timer critical</span></p>
+    </div>
+
+    <!-- ---------------------------- COUNTDOWN --------------------------- -->
+    <div class="gal-device">
+      <div class="device">
+        <div class="device__screen">
+          <div class="device__status"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+          <div class="device__notch"></div>
+          <div class="app-shell">
+            <div class="screen screen--play">
+              <header class="app-bar">
+                <button class="icon-btn icon-btn--danger" aria-label="Restart"><svg><use href="#i-refresh"/></svg></button>
+                <div class="readouts">
+                  <div class="readout readout--score"><span class="readout__label">Score</span><span class="readout__value u-num">0</span></div>
+                  <div class="readout readout--timer"><span class="readout__label">Time</span><span class="readout__value u-num">5:00</span></div>
+                  <div class="readout readout--strikes">
+                    <span class="readout__label">Strikes</span>
+                    <span class="strikes" role="img" aria-label="0 of 3 strikes used">
+                      <span class="strikes__pip"></span><span class="strikes__pip"></span><span class="strikes__pip"></span>
+                    </span>
+                  </div>
+                </div>
+                <button class="icon-btn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+              </header>
+              <div class="stage">
+                <div class="prompt"><span class="prompt__label">Get ready</span></div>
+                <div class="board-area">
+                  <div class="board-frame">
+                    <div class="board-slot"><div class="gal-board-placeholder">Board renderer<em>position primed</em></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="action-bar">
+                <div class="action-bar__inner">
+                  <div class="answers">
+                    <button class="answer answer--safe" disabled><svg><use href="#i-shield"/></svg> Safe</button>
+                    <button class="answer answer--unsafe" disabled><svg><use href="#i-alert"/></svg> Unsafe</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="overlay" role="status" aria-live="assertive">
+              <div class="countdown">
+                <div class="countdown__num u-num">3</div>
+                <div class="countdown__label">Blunder Rush</div>
+              </div>
+            </div>
+          </div>
+          <div class="device__home"></div>
+        </div>
+      </div>
+      <p class="gal-device__caption">Countdown overlay<span>Fixed-width digit; buttons disabled underneath</span></p>
+    </div>
+
+    <!-- --------------------------- GAME OVER ---------------------------- -->
+    <div class="gal-device">
+      <div class="device">
+        <div class="device__screen">
+          <div class="device__status"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+          <div class="device__notch"></div>
+          <div class="app-shell">
+            <div class="screen screen--summary">
+              <header class="app-bar">
+                <button class="icon-btn" aria-label="Back to menu"><svg><use href="#i-back"/></svg></button>
+                <div class="app-bar__title">Run complete</div>
+                <button class="icon-btn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+              </header>
+
+              <div class="summary-scroll u-scroll">
+                <div class="screen-body__inner">
+                  <div class="summary-hero">
+                    <span class="summary-hero__eyebrow">Final score</span>
+                    <span class="summary-hero__score u-num">27</span>
+                    <span class="summary-hero__note">
+                      <span class="badge badge--gold"><svg style="width:12px;height:12px"><use href="#i-arrow-up"/></svg> New best &mdash; beat 24</span>
+                    </span>
+                  </div>
+
+                  <div class="stat-grid">
+                    <div class="stat-tile stat-tile--good"><span class="stat-tile__value u-num">27</span><span class="stat-tile__label">Correct</span></div>
+                    <div class="stat-tile stat-tile--bad"><span class="stat-tile__value u-num">3</span><span class="stat-tile__label">Missed</span></div>
+                    <div class="stat-tile"><span class="stat-tile__value u-num">90%</span><span class="stat-tile__label">Accuracy</span></div>
+                  </div>
+
+                  <div class="history">
+                    <div class="history__head">
+                      <span class="section__title">Review</span>
+                      <span class="u-caps u-num">30 puzzles</span>
+                    </div>
+                    <div class="history-legend">
+                      <span class="history-legend__item"><span class="history-legend__swatch history-legend__swatch--correct"></span> Correct</span>
+                      <span class="history-legend__item"><span class="history-legend__swatch history-legend__swatch--blunder"></span> Missed a blunder</span>
+                      <span class="history-legend__item"><span class="history-legend__swatch history-legend__swatch--missed"></span> Called a safe move unsafe</span>
+                    </div>
+                    <ul class="history-list">
+                      <li><button class="history-item" data-result="blunder">
+                        <span class="history-item__rail"></span>
+                        <span class="history-item__icon"><svg><use href="#i-x"/></svg></span>
+                        <span class="history-item__body">
+                          <span class="history-item__title">Missed a blunder</span>
+                          <span class="history-item__meta">Qh4 &middot; move 21 &middot; 4.2s</span>
+                        </span>
+                        <span class="history-item__rating u-num">1520</span>
+                      </button></li>
+                      <li><button class="history-item" data-result="correct">
+                        <span class="history-item__rail"></span>
+                        <span class="history-item__icon"><svg><use href="#i-check"/></svg></span>
+                        <span class="history-item__body">
+                          <span class="history-item__title">Correct &mdash; unsafe</span>
+                          <span class="history-item__meta">Nxe5 &middot; move 18 &middot; 1.8s</span>
+                        </span>
+                        <span class="history-item__rating u-num">1480</span>
+                      </button></li>
+                      <li><button class="history-item" data-result="missed">
+                        <span class="history-item__rail"></span>
+                        <span class="history-item__icon"><svg><use href="#i-alert"/></svg></span>
+                        <span class="history-item__body">
+                          <span class="history-item__title">Called a safe move unsafe</span>
+                          <span class="history-item__meta">Rd1 &middot; move 14 &middot; 2.6s</span>
+                        </span>
+                        <span class="history-item__rating u-num">1455</span>
+                      </button></li>
+                      <li><button class="history-item" data-result="correct">
+                        <span class="history-item__rail"></span>
+                        <span class="history-item__icon"><svg><use href="#i-check"/></svg></span>
+                        <span class="history-item__body">
+                          <span class="history-item__title">Correct &mdash; safe</span>
+                          <span class="history-item__meta">Bg5 &middot; move 11 &middot; 1.1s</span>
+                        </span>
+                        <span class="history-item__rating u-num">1440</span>
+                      </button></li>
+                      <li><button class="history-item" data-result="correct">
+                        <span class="history-item__rail"></span>
+                        <span class="history-item__icon"><svg><use href="#i-check"/></svg></span>
+                        <span class="history-item__body">
+                          <span class="history-item__title">Correct &mdash; safe</span>
+                          <span class="history-item__meta">O-O &middot; move 9 &middot; 0.9s</span>
+                        </span>
+                        <span class="history-item__rating u-num">1425</span>
+                      </button></li>
+                      <li><button class="history-item" data-result="correct">
+                        <span class="history-item__rail"></span>
+                        <span class="history-item__icon"><svg><use href="#i-check"/></svg></span>
+                        <span class="history-item__body">
+                          <span class="history-item__title">Correct &mdash; unsafe</span>
+                          <span class="history-item__meta">Nd5 &middot; move 24 &middot; 3.4s</span>
+                        </span>
+                        <span class="history-item__rating u-num">1410</span>
+                      </button></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="action-bar">
+                <div class="action-bar__inner" style="display:grid; gap:var(--space-2)">
+                  <button class="btn btn--primary btn--lg btn--block"><svg><use href="#i-refresh"/></svg> Play again</button>
+                  <button class="btn btn--ghost btn--block">Back to modes</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="device__home"></div>
+        </div>
+      </div>
+      <p class="gal-device__caption">Game over<span>Only the review list scrolls; the actions stay pinned</span></p>
+    </div>
+
+    <!-- ------------------------- RESTART CONFIRM ------------------------ -->
+    <div class="gal-device">
+      <div class="device">
+        <div class="device__screen">
+          <div class="device__status"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+          <div class="device__notch"></div>
+          <div class="app-shell">
+            <div class="screen screen--play">
+              <header class="app-bar">
+                <button class="icon-btn icon-btn--danger" aria-label="Restart"><svg><use href="#i-refresh"/></svg></button>
+                <div class="readouts">
+                  <div class="readout readout--score"><span class="readout__label">Score</span><span class="readout__value u-num">14</span></div>
+                  <div class="readout readout--timer"><span class="readout__label">Time</span><span class="readout__value u-num">3:42</span></div>
+                  <div class="readout readout--strikes">
+                    <span class="readout__label">Strikes</span>
+                    <span class="strikes" role="img" aria-label="1 of 3 strikes used">
+                      <span class="strikes__pip is-spent"></span><span class="strikes__pip"></span><span class="strikes__pip"></span>
+                    </span>
+                  </div>
+                </div>
+                <button class="icon-btn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+              </header>
+              <div class="stage">
+                <div class="prompt">
+                  <span class="prompt__side" data-side="white"></span>
+                  <span class="prompt__label">Next move</span>
+                  <span class="prompt__move">Nxe5</span>
+                </div>
+                <div class="board-area">
+                  <div class="board-frame">
+                    <div class="board-slot"><div class="gal-board-placeholder">Board renderer</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="action-bar">
+                <div class="action-bar__inner">
+                  <div class="answers">
+                    <button class="answer answer--safe" disabled><svg><use href="#i-shield"/></svg> Safe</button>
+                    <button class="answer answer--unsafe" disabled><svg><use href="#i-alert"/></svg> Unsafe</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="sheet-scrim"></div>
+            <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="gal-restart-title">
+              <div class="sheet__grabber"></div>
+              <div class="sheet__body">
+                <h2 class="sheet__title" id="gal-restart-title">Restart this run?</h2>
+                <p class="sheet__text">Your score of <strong class="u-num">14</strong> will be discarded.</p>
+              </div>
+              <div class="sheet__actions">
+                <button class="btn btn--danger btn--lg btn--block">Restart</button>
+                <button class="btn btn--ghost btn--block">Keep playing</button>
+              </div>
+            </div>
+          </div>
+          <div class="device__home"></div>
+        </div>
+      </div>
+      <p class="gal-device__caption">Restart confirmation<span>Why the corner restart button is safe to keep small</span></p>
+    </div>
+
+    <!-- --------------------------- BLINDFOLD ---------------------------- -->
+    <div class="gal-device">
+      <div class="device">
+        <div class="device__screen">
+          <div class="device__status"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+          <div class="device__notch"></div>
+          <div class="app-shell">
+            <div class="screen screen--play">
+              <header class="app-bar">
+                <button class="icon-btn icon-btn--danger" aria-label="Restart"><svg><use href="#i-refresh"/></svg></button>
+                <div class="readouts">
+                  <div class="readout readout--score"><span class="readout__label">Score</span><span class="readout__value u-num">6</span></div>
+                  <div class="readout readout--strikes">
+                    <span class="readout__label">Strikes</span>
+                    <span class="strikes" role="img" aria-label="0 of 3 strikes used">
+                      <span class="strikes__pip"></span><span class="strikes__pip"></span><span class="strikes__pip"></span>
+                    </span>
+                  </div>
+                </div>
+                <button class="icon-btn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+              </header>
+              <div class="stage">
+                <div class="prompt">
+                  <span class="prompt__side" data-side="white"></span>
+                  <span class="prompt__label">Next move</span>
+                  <span class="prompt__move">Bxf7+</span>
+                </div>
+                <div class="board-area">
+                  <div class="board-frame">
+                    <div class="blindfold">
+                      <span class="blindfold__eyebrow"><svg style="width:14px;height:14px;vertical-align:-2px"><use href="#i-eye-off"/></svg> Blindfold</span>
+                      <p class="blindfold__moves">1.e4 e5 2.Nf3 Nc6 3.Bc4 Nd4 4.Nxe5 Qg5</p>
+                      <p class="blindfold__hint">Hold the position. Is Bxf7+ safe?</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="action-bar">
+                <div class="action-bar__inner">
+                  <div class="answers">
+                    <button class="answer answer--safe"><svg><use href="#i-shield"/></svg> Safe</button>
+                    <button class="answer answer--unsafe"><svg><use href="#i-alert"/></svg> Unsafe</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Toast layer is a child of .app-shell, not of a screen, so it is
+                 positioned against the whole viewport and always clears the
+                 answer buttons. -->
+            <div class="toast-layer">
+              <div class="toast toast--info">
+                <svg><use href="#i-info"/></svg>
+                <span class="toast__text">Board hidden in this mode</span>
+                <button class="toast__action">Reveal</button>
+              </div>
+            </div>
+          </div>
+          <div class="device__home"></div>
+        </div>
+      </div>
+      <p class="gal-device__caption">Blindfold mode + toast<span>Same shell, board slot swapped; toast sits above the answers, never over them</span></p>
+    </div>
+
+    <!-- --------------------------- LANDSCAPE ---------------------------- -->
+    <div class="gal-device">
+      <div class="device device--short" style="width:691px;height:399px;border-radius:46px">
+        <div class="device__screen" style="--inset-top:0px;--inset-bottom:0px;--inset-left:44px;--inset-right:44px">
+          <div class="app-shell">
+            <div class="screen screen--play" style="grid-template-rows:auto minmax(0,1fr); grid-template-columns:minmax(0,1fr) minmax(180px,34%); grid-template-areas:'bar bar' 'stage actions'">
+              <header class="app-bar" style="grid-area:bar">
+                <button class="icon-btn icon-btn--danger" aria-label="Restart"><svg><use href="#i-refresh"/></svg></button>
+                <div class="readouts">
+                  <div class="readout readout--score"><span class="readout__label">Score</span><span class="readout__value u-num">14</span></div>
+                  <div class="readout readout--timer"><span class="readout__label">Time</span><span class="readout__value u-num">3:42</span></div>
+                  <div class="readout readout--strikes">
+                    <span class="readout__label">Strikes</span>
+                    <span class="strikes"><span class="strikes__pip is-spent"></span><span class="strikes__pip"></span><span class="strikes__pip"></span></span>
+                  </div>
+                </div>
+                <button class="icon-btn" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+              </header>
+              <div class="stage" style="grid-area:stage">
+                <div class="prompt"><span class="prompt__side" data-side="white"></span><span class="prompt__label">Next move</span><span class="prompt__move">Nxe5</span></div>
+                <div class="board-area">
+                  <div class="board-frame"><div class="board-slot"><div class="gal-board-placeholder">Board</div></div></div>
+                </div>
+              </div>
+              <div class="action-bar" style="grid-area:actions; display:grid; align-content:center; background:none">
+                <div class="action-bar__inner">
+                  <div class="answers" style="grid-template-columns:1fr">
+                    <button class="answer answer--safe"><svg><use href="#i-shield"/></svg> Safe</button>
+                    <button class="answer answer--unsafe"><svg><use href="#i-alert"/></svg> Unsafe</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="gal-device__caption">Landscape / short viewport<span>Answers move beside the board rather than shrinking below 44&nbsp;pt</span></p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ========================== 2. ANSWER BUTTONS =========================== -->
+<section class="gal-section">
+  <header>
+    <h2 class="gal-h2">Answer buttons &amp; feedback states</h2>
+    <p class="gal-lede">The only two controls that matter under time pressure. Every state below is a class on <code class="gal-code">.answer</code>.</p>
+  </header>
+  <div class="gal-panel gal-stack">
+    <span class="gal-label">Default</span>
+    <div class="answers">
+      <button class="answer answer--safe"><svg><use href="#i-shield"/></svg> Safe</button>
+      <button class="answer answer--unsafe"><svg><use href="#i-alert"/></svg> Unsafe</button>
+    </div>
+
+    <span class="gal-label">With key hint (tablet / keyboard)</span>
+    <div class="answers">
+      <button class="answer answer--safe"><svg><use href="#i-shield"/></svg> Safe<span class="answer__hint">&larr; or S</span></button>
+      <button class="answer answer--unsafe"><svg><use href="#i-alert"/></svg> Unsafe<span class="answer__hint">&rarr; or U</span></button>
+    </div>
+
+    <span class="gal-label">Correct &mdash; <code class="gal-code">.is-correct</code> + <code class="gal-code">.is-dimmed</code></span>
+    <div class="answers">
+      <button class="answer answer--safe is-correct"><svg><use href="#i-check"/></svg> Safe</button>
+      <button class="answer answer--unsafe is-dimmed"><svg><use href="#i-alert"/></svg> Unsafe</button>
+    </div>
+
+    <span class="gal-label">Wrong &mdash; <code class="gal-code">.is-wrong</code> + <code class="gal-code">.is-dimmed</code></span>
+    <div class="answers">
+      <button class="answer answer--safe is-dimmed"><svg><use href="#i-shield"/></svg> Safe</button>
+      <button class="answer answer--unsafe is-wrong"><svg><use href="#i-x"/></svg> Unsafe</button>
+    </div>
+
+    <span class="gal-label">Locked (during countdown / solution replay)</span>
+    <div class="answers">
+      <button class="answer answer--safe" disabled><svg><use href="#i-shield"/></svg> Safe</button>
+      <button class="answer answer--unsafe" disabled><svg><use href="#i-alert"/></svg> Unsafe</button>
+    </div>
+
+    <p class="gal-note">
+      74&nbsp;pt tall &times; half the content width, with a 16&nbsp;px dead gutter and 18&nbsp;px corner
+      radii between them &mdash; roughly 170&nbsp;&times;&nbsp;74&nbsp;pt of target each, nearly 6&times; the
+      44&nbsp;pt HIG minimum. Meaning never rests on hue alone: shield vs. warning triangle,
+      the words themselves, then check vs. cross on feedback.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 3. VERDICTS =============================== -->
+<section class="gal-section">
+  <header><h2 class="gal-h2">Verdict pills</h2></header>
+  <div class="gal-panel gal-row">
+    <span class="verdict verdict--correct gal-static-verdict"><svg><use href="#i-check"/></svg> Correct <span class="verdict__delta u-num">+1</span></span>
+    <span class="verdict verdict--wrong gal-static-verdict"><svg><use href="#i-x"/></svg> Blunder &mdash; watch the reply</span>
+    <span class="verdict verdict--neutral gal-static-verdict"><svg><use href="#i-info"/></svg> Replaying solution&hellip;</span>
+  </div>
+</section>
+
+<!-- ============================ 4. READOUTS =============================== -->
+<section class="gal-section">
+  <header>
+    <h2 class="gal-h2">Readouts</h2>
+    <p class="gal-lede">Score, timer and strikes. Tabular figures everywhere; the timer escalates by colour, the strikes are pips rather than a number.</p>
+  </header>
+  <div class="gal-panel gal-row" style="gap:var(--space-7)">
+    <div class="readout readout--score"><span class="readout__label">Score</span><span class="readout__value u-num">14</span></div>
+    <div class="readout readout--timer"><span class="readout__label">Time</span><span class="readout__value u-num">3:42</span></div>
+    <div class="readout readout--timer is-warning"><span class="readout__label">Time</span><span class="readout__value u-num">0:48</span></div>
+    <div class="readout readout--timer is-critical"><span class="readout__label">Time</span><span class="readout__value u-num">0:09</span></div>
+    <div class="readout"><span class="readout__label">Strikes</span><span class="strikes"><span class="strikes__pip"></span><span class="strikes__pip"></span><span class="strikes__pip"></span></span></div>
+    <div class="readout"><span class="readout__label">Strikes</span><span class="strikes"><span class="strikes__pip is-spent"></span><span class="strikes__pip is-spent"></span><span class="strikes__pip"></span></span></div>
+    <div class="readout"><span class="readout__label">Strikes</span><span class="strikes"><span class="strikes__pip is-spent"></span><span class="strikes__pip is-spent"></span><span class="strikes__pip is-spent"></span></span></div>
+  </div>
+  <p class="gal-note">
+    <strong>Jitter check:</strong> <span class="u-num" style="font-weight:700">1:11</span> /
+    <span class="u-num" style="font-weight:700">0:00</span> /
+    <span class="u-num" style="font-weight:700">4:88</span> all occupy identical width, so the
+    timer never reflows its neighbours. Compare without tabular figures:
+    <span style="font-weight:700;font-variant-numeric:proportional-nums">1:11</span> /
+    <span style="font-weight:700;font-variant-numeric:proportional-nums">0:00</span> /
+    <span style="font-weight:700;font-variant-numeric:proportional-nums">4:88</span>.
+  </p>
+</section>
+
+<!-- ========================== 5. BUTTONS / CHIPS ========================== -->
+<section class="gal-section">
+  <header><h2 class="gal-h2">Buttons, chips, badges</h2></header>
+  <div class="gal-grid">
+    <div class="gal-panel gal-stack">
+      <span class="gal-label">Buttons</span>
+      <button class="btn btn--primary btn--lg btn--block"><svg><use href="#i-bolt"/></svg> Start Blunder Rush</button>
+      <button class="btn btn--secondary btn--block">Secondary</button>
+      <button class="btn btn--danger btn--block">Restart</button>
+      <button class="btn btn--ghost btn--block">Back to modes</button>
+      <button class="btn btn--primary btn--block" disabled>Disabled</button>
+    </div>
+
+    <div class="gal-panel gal-stack">
+      <span class="gal-label">Icon buttons (40&nbsp;pt, corners only)</span>
+      <div class="gal-row">
+        <button class="icon-btn"><svg><use href="#i-gear"/></svg></button>
+        <button class="icon-btn icon-btn--danger"><svg><use href="#i-refresh"/></svg></button>
+        <button class="icon-btn"><svg><use href="#i-back"/></svg></button>
+        <button class="icon-btn icon-btn--ghost"><svg><use href="#i-info"/></svg></button>
+      </div>
+      <span class="gal-label">Badges</span>
+      <div class="gal-row">
+        <span class="badge">Neutral</span>
+        <span class="badge badge--safe">Safe</span>
+        <span class="badge badge--unsafe">Blunder</span>
+        <span class="badge badge--miss">Over-cautious</span>
+        <span class="badge badge--accent">Rated</span>
+        <span class="badge badge--gold">New best</span>
+      </div>
+      <span class="gal-label">Segmented</span>
+      <div class="segmented" role="group">
+        <label class="segmented__option"><input type="radio" name="g-seg" checked><span>2D</span></label>
+        <label class="segmented__option"><input type="radio" name="g-seg"><span>3D</span></label>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 6. SETTINGS =============================== -->
+<section class="gal-section">
+  <header><h2 class="gal-h2">Settings sheet</h2></header>
+  <div class="gal-grid">
+    <div class="gal-panel">
+      <div class="setting-list">
+        <div class="setting-row">
+          <span class="setting-row__label">
+            <span class="setting-row__name">Sound</span>
+            <span class="setting-row__desc">Ding on correct, buzz on blunder</span>
+          </span>
+          <label class="switch"><input type="checkbox" checked aria-label="Sound"><span class="switch__track"></span><span class="switch__thumb"></span></label>
+        </div>
+        <div class="setting-row">
+          <span class="setting-row__label">
+            <span class="setting-row__name">Haptics</span>
+            <span class="setting-row__desc">Vibrate on a strike</span>
+          </span>
+          <label class="switch"><input type="checkbox" aria-label="Haptics"><span class="switch__track"></span><span class="switch__thumb"></span></label>
+        </div>
+        <div class="setting-row">
+          <span class="setting-row__label">
+            <span class="setting-row__name">Coordinates</span>
+            <span class="setting-row__desc">Rank and file labels on the board</span>
+          </span>
+          <label class="switch"><input type="checkbox" checked aria-label="Coordinates"><span class="switch__track"></span><span class="switch__thumb"></span></label>
+        </div>
+        <div class="setting-row">
+          <span class="setting-row__label">
+            <span class="setting-row__name">Board</span>
+            <span class="setting-row__desc">3D uses more battery</span>
+          </span>
+          <div class="segmented" role="group" aria-label="Board renderer">
+            <label class="segmented__option"><input type="radio" name="g-board2" checked><span>2D</span></label>
+            <label class="segmented__option"><input type="radio" name="g-board2"><span>3D</span></label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-row__label">
+            <span class="setting-row__name">Appearance</span>
+            <span class="setting-row__desc">Overrides the system setting</span>
+          </span>
+          <div class="segmented" role="group" aria-label="Appearance">
+            <label class="segmented__option"><input type="radio" name="g-appear"><span>Light</span></label>
+            <label class="segmented__option"><input type="radio" name="g-appear" checked><span>Auto</span></label>
+            <label class="segmented__option"><input type="radio" name="g-appear"><span>Dark</span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gal-panel gal-stack">
+      <span class="gal-label">Elo band selector</span>
+      <div class="band-picker">
+        <div class="band-picker__head">
+          <span class="section__title">Rating band</span>
+          <span class="band-picker__current u-num">1400&ndash;1600</span>
+        </div>
+        <div class="band-row u-scroll-x" role="radiogroup" style="margin-inline:0;padding-inline:2px">
+          <button class="band" role="radio" aria-checked="false"><span class="band__range u-num">1000&ndash;1200</span><span class="band__label">Club</span></button>
+          <button class="band" role="radio" aria-checked="false"><span class="band__range u-num">1200&ndash;1400</span><span class="band__label">Strong</span></button>
+          <button class="band" role="radio" aria-checked="true"><span class="band__range u-num">1400&ndash;1600</span><span class="band__label">Advanced</span></button>
+          <button class="band" role="radio" aria-checked="false"><span class="band__range u-num">1600&ndash;1800</span><span class="band__label">Expert</span></button>
+        </div>
+      </div>
+      <span class="gal-label">Toast / snackbar</span>
+      <div class="gal-stack">
+        <div class="toast toast--success"><svg><use href="#i-check"/></svg><span class="toast__text">Progress saved offline</span></div>
+        <div class="toast toast--error"><svg><use href="#i-alert"/></svg><span class="toast__text">Puzzle database unavailable</span><button class="toast__action">Retry</button></div>
+        <div class="toast toast--info"><svg><use href="#i-info"/></svg><span class="toast__text">Rating band raised to 1600</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 7. HISTORY ================================ -->
+<section class="gal-section">
+  <header>
+    <h2 class="gal-h2">Review list</h2>
+    <p class="gal-lede">Three outcomes, each with a colour rail, an icon and a verdict in words. The old app rendered these as bare coloured numbers.</p>
+  </header>
+  <div class="gal-panel gal-stack" style="max-width:520px">
+    <ul class="history-list">
+      <li><button class="history-item" data-result="correct">
+        <span class="history-item__rail"></span><span class="history-item__icon"><svg><use href="#i-check"/></svg></span>
+        <span class="history-item__body"><span class="history-item__title">Correct &mdash; safe</span><span class="history-item__meta">Bg5 &middot; move 11 &middot; 1.1s</span></span>
+        <span class="history-item__rating u-num">1440</span>
+      </button></li>
+      <li><button class="history-item" data-result="blunder">
+        <span class="history-item__rail"></span><span class="history-item__icon"><svg><use href="#i-x"/></svg></span>
+        <span class="history-item__body"><span class="history-item__title">Missed a blunder</span><span class="history-item__meta">Qh4 &middot; move 21 &middot; 4.2s</span></span>
+        <span class="history-item__rating u-num">1520</span>
+      </button></li>
+      <li><button class="history-item" data-result="missed">
+        <span class="history-item__rail"></span><span class="history-item__icon"><svg><use href="#i-alert"/></svg></span>
+        <span class="history-item__body"><span class="history-item__title">Called a safe move unsafe</span><span class="history-item__meta">Rd1 &middot; move 14 &middot; 2.6s</span></span>
+        <span class="history-item__rating u-num">1455</span>
+      </button></li>
+    </ul>
+    <div class="empty">
+      <svg><use href="#i-puzzle"/></svg>
+      <p>No puzzles yet &mdash; play a run to fill this in.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 8. LOADING ================================ -->
+<section class="gal-section">
+  <header><h2 class="gal-h2">Loading &amp; skeletons</h2></header>
+  <div class="gal-grid">
+    <div class="gal-panel" style="display:grid;place-items:center;gap:var(--space-3);min-height:200px">
+      <div class="spinner"></div>
+      <p class="loading__status">Caching puzzles for offline play&hellip;</p>
+      <div class="progress"><div class="progress__bar" style="width:64%"></div></div>
+    </div>
+    <div class="gal-panel gal-stack">
+      <div class="skeleton" style="height:78px"></div>
+      <div class="skeleton" style="height:78px"></div>
+      <div class="skeleton" style="height:22px;width:60%"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= 9. BOARD ================================= -->
+<section class="gal-section">
+  <header>
+    <h2 class="gal-h2">Board tokens</h2>
+    <p class="gal-lede">
+      The 11 properties in <code class="gal-code">TOKENS[]</code> from
+      <code class="gal-code">board-interface.js</code>. Both renderers read these at runtime,
+      so the names are a contract. The checkerboard below is drawn from
+      <code class="gal-code">--board-light</code> / <code class="gal-code">--board-dark</code>
+      by <code class="gal-code">.board-slot</code>; the coloured squares are the highlight kinds.
+    </p>
+    <p class="gal-note">
+      The light theme&rsquo;s light square sits at <strong>L* 81.7</strong>, deliberately close to
+      the dark theme&rsquo;s <strong>L* 82.2</strong>. A white piece is L* 98.3, so anything lighter
+      than about L* 83 leaves too little albedo between piece and square for the 3D renderer to
+      separate them once a flat square catches more light than a curved piece body. Both themes
+      now give the renderer the same problem to solve.
+      <br>
+      <code class="gal-code">--board-coord-on-light</code> /
+      <code class="gal-code">--board-coord-on-dark</code> are additions beyond
+      <code class="gal-code">TOKENS[]</code>: reusing the opposite square&rsquo;s fill as label ink
+      only reaches 2.2:1 against its own square, which is not legible at 11px.
+      <br>
+      <code class="gal-code">--piece-black</code> is an <strong>albedo</strong>, not a rendered
+      colour: at L* 23 it is ebonized boxwood, not near-black. A curved piece body returns only
+      about a quarter of its albedo luminance in the 3D rig, so a near-black albedo lands near
+      rendered L* 3 — where the entire form spans under 3 L* and reads as a flat silhouette.
+      Real tournament dark sets are L* 15-25 and warm, so this is the realistic value as well
+      as the legible one. The 2D board is unaffected: it ships Cburnett artwork with baked-in
+      fills.
+    </p>
+  </header>
+  <div class="gal-grid">
+    <div class="gal-panel">
+      <div class="gal-board-demo">
+      <div class="board-frame">
+        <div class="board-slot">
+          <div class="gal-hl gal-hl--from"></div>
+          <div class="gal-hl gal-hl--to"></div>
+          <div class="gal-hl gal-hl--ok"></div>
+          <div class="gal-hl gal-hl--err" style="left:37.5%;top:25%"></div>
+          <div class="gal-hl gal-hl--hint"></div>
+          <div class="gal-hl gal-hl--sel"></div>
+          <!-- a1 is a dark square, b1 light, and so on along the bottom rank -->
+          <span class="gal-coord gal-coord--on-dark"  style="left:2%;  bottom:1.5%">a</span>
+          <span class="gal-coord gal-coord--on-light" style="left:14.5%;bottom:1.5%">b</span>
+          <span class="gal-coord gal-coord--on-dark"  style="left:27%; bottom:1.5%">c</span>
+          <span class="gal-coord gal-coord--on-light" style="left:39.5%;bottom:1.5%">d</span>
+          <span class="gal-coord gal-coord--on-light" style="left:2%;  top:1.5%">8</span>
+          <span class="gal-coord gal-coord--on-dark"  style="left:2%;  top:14%">7</span>
+          <!-- piece albedos, shown as discs on both square colours -->
+          <span class="gal-piece" style="background:var(--piece-white);left:53%;top:53%"></span>
+          <span class="gal-piece" style="background:var(--piece-white);left:65.5%;top:53%"></span>
+          <span class="gal-piece" style="background:var(--piece-black);left:53%;top:65.5%"></span>
+          <span class="gal-piece" style="background:var(--piece-black);left:65.5%;top:65.5%"></span>
+        </div>
+      </div>
+      </div>
+    </div>
+    <div class="gal-panel">
+      <div class="gal-swatches" id="gal-board-swatches"></div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================== 10. TOKEN DOCS ============================= -->
+<section class="gal-section">
+  <header>
+    <h2 class="gal-h2">Colour tokens</h2>
+    <p class="gal-lede">Every value re-resolves when the theme changes; nothing below is hard-coded.</p>
+  </header>
+  <div class="gal-panel"><div class="gal-swatches" id="gal-colour-swatches"></div></div>
+</section>
+
+<section class="gal-section">
+  <header><h2 class="gal-h2">Type scale</h2>
+    <p class="gal-lede">Ratio ~1.22 from an 11&nbsp;px micro-label to an 80&nbsp;px countdown. Display face for numerals and headings, monospace for chess notation.</p>
+  </header>
+  <div class="gal-panel">
+    <div class="gal-type-row"><code>--fs-6xl</code><code>80px</code><span style="font-family:var(--font-display);font-size:var(--fs-6xl);font-weight:800;letter-spacing:var(--tracking-tight);line-height:1" class="u-num">3</span></div>
+    <div class="gal-type-row"><code>--fs-5xl</code><code>56px</code><span style="font-family:var(--font-display);font-size:var(--fs-5xl);font-weight:800;letter-spacing:var(--tracking-tight);line-height:1" class="u-num">27</span></div>
+    <div class="gal-type-row"><code>--fs-4xl</code><code>40px</code><span style="font-family:var(--font-display);font-size:var(--fs-4xl);font-weight:700;letter-spacing:var(--tracking-tight)">Game over</span></div>
+    <div class="gal-type-row"><code>--fs-3xl</code><code>31px</code><span style="font-family:var(--font-display);font-size:var(--fs-3xl);font-weight:800;letter-spacing:var(--tracking-tight)">Pick a drill</span></div>
+    <div class="gal-type-row"><code>--fs-2xl</code><code>24px</code><span style="font-family:var(--font-display);font-size:var(--fs-2xl);font-weight:700;letter-spacing:var(--tracking-tight)">Safe / Unsafe</span></div>
+    <div class="gal-type-row"><code>--fs-xl</code><code>20px</code><span style="font-size:var(--fs-xl);font-weight:600">Next move: Nxe5</span></div>
+    <div class="gal-type-row"><code>--fs-lg</code><code>17px</code><span style="font-size:var(--fs-lg);font-weight:600">Blunder Rush</span></div>
+    <div class="gal-type-row"><code>--fs-md</code><code>15px</code><span style="font-size:var(--fs-md)">Body copy. Safe or unsafe, as many as you can.</span></div>
+    <div class="gal-type-row"><code>--fs-sm</code><code>13px</code><span style="font-size:var(--fs-sm);color:var(--text-2)">Secondary copy and card descriptions.</span></div>
+    <div class="gal-type-row"><code>--fs-xs</code><code>12px</code><span style="font-size:var(--fs-xs);color:var(--text-3)">Meta lines, ratings, timings.</span></div>
+    <div class="gal-type-row"><code>--fs-2xs</code><code>11px</code><span class="u-caps">Uppercase readout label</span></div>
+  </div>
+</section>
+
+<section class="gal-section">
+  <header><h2 class="gal-h2">Spacing, radii, shadows, motion</h2></header>
+  <div class="gal-grid">
+    <div class="gal-panel">
+      <span class="gal-label">Spacing &mdash; 4&nbsp;px base</span>
+      <div id="gal-space" style="margin-top:var(--space-3)"></div>
+    </div>
+    <div class="gal-panel">
+      <span class="gal-label">Radii</span>
+      <div class="gal-row" style="margin-top:var(--space-3)">
+        <div class="gal-radius-demo" style="border-radius:var(--radius-xs)">xs</div>
+        <div class="gal-radius-demo" style="border-radius:var(--radius-sm)">sm</div>
+        <div class="gal-radius-demo" style="border-radius:var(--radius-md)">md</div>
+        <div class="gal-radius-demo" style="border-radius:var(--radius-lg)">lg</div>
+        <div class="gal-radius-demo" style="border-radius:var(--radius-xl)">xl</div>
+        <div class="gal-radius-demo" style="border-radius:var(--radius-2xl)">2xl</div>
+        <div class="gal-radius-demo" style="border-radius:var(--radius-pill)">pill</div>
+      </div>
+    </div>
+    <div class="gal-panel gal-stack">
+      <span class="gal-label">Elevation</span>
+      <div class="gal-shadow-demo" style="box-shadow:var(--shadow-1)">--shadow-1</div>
+      <div class="gal-shadow-demo" style="box-shadow:var(--shadow-2)">--shadow-2</div>
+      <div class="gal-shadow-demo" style="box-shadow:var(--shadow-3)">--shadow-3</div>
+      <div class="gal-shadow-demo" style="box-shadow:var(--shadow-4)">--shadow-4</div>
+    </div>
+    <div class="gal-panel gal-stack">
+      <span class="gal-label">Motion</span>
+      <p class="gal-note" style="margin:0">
+        <code class="gal-code">--dur-1</code> 90ms press &middot;
+        <code class="gal-code">--dur-2</code> 160ms state &middot;
+        <code class="gal-code">--dur-3</code> 240ms enter/exit &middot;
+        <code class="gal-code">--dur-4</code> 380ms sheets &middot;
+        <code class="gal-code">--dur-5</code> 700ms verdict.
+        Easings: <code class="gal-code">--ease-out</code>, <code class="gal-code">--ease-in</code>,
+        <code class="gal-code">--ease-in-out</code>, <code class="gal-code">--ease-spring</code>.
+      </p>
+      <p class="gal-note" style="margin:0">
+        Under <code class="gal-code">prefers-reduced-motion: reduce</code> the durations collapse
+        to 1&nbsp;ms <em>at the token level</em>, and shakes, pulses, spinners and shimmers are
+        switched off outright. Nothing in the app depends on movement to be understood.
+      </p>
+      <span class="gal-label">Layout tokens</span>
+      <p class="gal-note" style="margin:0">
+        <code class="gal-code">--tap-min</code> 44px &middot;
+        <code class="gal-code">--tap-comfort</code> 56px &middot;
+        <code class="gal-code">--answer-height</code> 74px &middot;
+        <code class="gal-code">--answer-gutter</code> 16px &middot;
+        <code class="gal-code">--appbar-height</code> 52px &middot;
+        <code class="gal-code">--content-max</code> / <code class="gal-code">--board-max</code> 560px &middot;
+        <code class="gal-code">--shell-height</code> 100dvh &middot;
+        <code class="gal-code">--inset-top/right/bottom/left</code> from <code class="gal-code">env(safe-area-inset-*)</code>.
+      </p>
+    </div>
+  </div>
+</section>
+
+</div><!-- /.gal-wrap -->
+
+<script>
+/* Gallery-only behaviour: the theme switch, and generating the token tables
+   from live computed values so the docs can never drift from tokens.css. */
+(function () {
+  var root = document.documentElement;
+
+  document.querySelectorAll('input[name="gal-theme"]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      if (input.value === 'system') root.removeAttribute('data-theme');
+      else root.setAttribute('data-theme', input.value);
+    });
+  });
+
+  function swatches(target, entries) {
+    var host = document.getElementById(target);
+    if (!host) return;
+    host.innerHTML = entries.map(function (e) {
+      return '<div class="gal-swatch">' +
+        '<div class="gal-swatch__chip" style="background:var(' + e[0] + ')"></div>' +
+        '<div class="gal-swatch__name">' + e[0] + '</div>' +
+        '<div class="gal-swatch__use">' + e[1] + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  /* The 11 renderer-contract tokens, in the order board-interface.js lists them. */
+  swatches('gal-board-swatches', [
+    ['--board-light', 'light square'],
+    ['--board-dark', 'dark square'],
+    ['--board-edge', 'rim / border'],
+    ['--hl-move', 'prompted move'],
+    ['--hl-select', 'user selection'],
+    ['--hl-error', 'wrong answer'],
+    ['--hl-success', 'right answer'],
+    ['--hl-hint', 'hint / replay'],
+    ['--arrow', 'arrows'],
+    ['--piece-white', 'white pieces'],
+    ['--piece-black', 'black pieces'],
+    ['--board-coord-on-light', 'rank/file ink, light sq'],
+    ['--board-coord-on-dark', 'rank/file ink, dark sq']
+  ]);
+
+  swatches('gal-colour-swatches', [
+    ['--bg', 'app background'],
+    ['--surface', 'cards, bars'],
+    ['--surface-2', 'subtle fill'],
+    ['--surface-3', 'pressed / inset fill'],
+    ['--surface-inset', 'wells, segmented track'],
+    ['--border', 'hairlines'],
+    ['--border-strong', 'emphasised edges'],
+    ['--text', 'primary text'],
+    ['--text-2', 'secondary text'],
+    ['--text-3', 'tertiary / labels'],
+    ['--accent', 'interactive, selected'],
+    ['--accent-soft', 'accent tint'],
+    ['--safe', 'Safe answer'],
+    ['--safe-soft', 'safe tint'],
+    ['--unsafe', 'Unsafe answer, strikes'],
+    ['--unsafe-soft', 'unsafe tint'],
+    ['--miss', 'called safe move unsafe'],
+    ['--warn', 'timer warning'],
+    ['--gold', 'score, personal best'],
+    ['--muted', 'disabled']
+  ]);
+
+  var space = document.getElementById('gal-space');
+  if (space) {
+    var px = [0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64];
+    space.innerHTML = px.map(function (v, i) {
+      return '<div class="gal-space-row">' +
+        '<code style="font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-3)">--space-' + i + '</code>' +
+        '<code style="font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-3)" class="u-num">' + v + 'px</code>' +
+        '<div class="gal-space-bar" style="width:' + Math.max(v, 1) + 'px"></div>' +
+        '</div>';
+    }).join('');
+  }
+})();
+</script>
+</body>
+</html>
