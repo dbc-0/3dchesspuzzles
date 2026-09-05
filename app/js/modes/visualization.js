@@ -86,6 +86,17 @@ const TEMPLATE = `
       text-align: center;
       display: grid; gap: var(--space-2);
     }
+    /* .blindfold__moves is sized for the drills flashcard, where a single square
+       name IS the screen's whole content. Here it is a running move list (up to ten
+       tokens at the deepest look-ahead) sitting above the board, not instead of it --
+       at that size it wrapped to several lines and squeezed the board down to make
+       room. Smaller and tighter keeps the banner compact so the board stays the
+       dominant thing on screen. */
+    .mv-banner .blindfold__moves {
+      font-size: var(--fs-md);
+      line-height: var(--lh-normal, 1.4);
+      word-spacing: 0.25em;
+    }
   </style>
   <header class="app-bar">
     <span data-shell="restart-slot"></span>

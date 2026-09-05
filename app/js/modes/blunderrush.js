@@ -669,6 +669,11 @@ export function createMode(ctx) {
     if (Number.isFinite(r)) q.set('r', String(Math.round(r)));
     const ply = entry.review && Number(entry.review.focusPly);
     q.set('ply', String(Number.isFinite(ply) ? Math.max(0, Math.round(ply)) : 0));
+    // This opens in a NEW TAB (see addStripEntry below), which has no lastSummary to
+    // inherit a board from -- without this, the review screen falls back to whatever
+    // the global board setting happens to be, which may not be what this run was
+    // actually played in. Carrying it explicitly keeps review matching the run.
+    q.set('board', settings.board === '3d' ? '3d' : '2d');
     return `#/review?${q.toString()}`;
   }
 

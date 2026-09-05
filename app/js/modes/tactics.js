@@ -240,6 +240,12 @@ export function createMode(ctx) {
     resolved: null,
     destroyed: false,
     finished: false,
+    // Bumped by every loadNext() call. A wrong/skipped answer's solution reveal plays out
+    // move-by-move over a couple of seconds in the background (see revealRemainingSolution)
+    // -- capturing this at the start of a reveal and checking it before each mutation lets
+    // "Next puzzle" (shown immediately, not after the reveal finishes -- see below) jump to a
+    // new puzzle without a still-running reveal corrupting it with a stray move afterward.
+    puzzleGen: 0,
   };
 
   const timers = new Set();
@@ -470,9 +476,12 @@ export function createMode(ctx) {
     return { chess };
   }
 
-  async function playAutoMove(uci) {
+  async function playAutoMove(uci, myGen) {
     const parsed = parseUci(uci);
     if (!parsed) return false;
+    // Checked synchronously, right before the mutation -- a stale reveal (the player already
+    // moved on to a new puzzle) must never call .move() on the NEW puzzle's chess instance.
+    if (myGen != null && myGen !== state.puzzleGen) return false;
     const mv = state.chess.move({ from: parsed.from, to: parsed.to, promotion: parsed.promotion || 'q' });
     if (!mv) return false;
     if (state.destroyed) return true;
@@ -481,20 +490,19 @@ export function createMode(ctx) {
   }
 
   async function revealRemainingSolution(fromIdx) {
+    const myGen = state.puzzleGen;
     lock();
     ctx.board.clearHighlights();
     let idx = fromIdx != null ? fromIdx : state.solutionIdx;
     await later(500);
-    while (idx < state.puzzle.m.length && !state.destroyed) {
+    while (idx < state.puzzle.m.length && !state.destroyed && state.puzzleGen === myGen) {
       const uci = state.puzzle.m[idx];
-      const ok = await playAutoMove(uci);
+      const ok = await playAutoMove(uci, myGen);
       if (!ok) break;
       idx += 1;
       state.solutionIdx = idx;
       await later(550);
     }
-    if (state.destroyed) return;
-    els.nextBtn.hidden = false;
   }
 
   function resolveCorrect() {
@@ -523,6 +531,11 @@ export function createMode(ctx) {
     ctx.board.flash('error');
     spendStrike();
     finalizeRating('wrong');
+    // "Next puzzle" is available right away -- the multi-second move-by-move reveal below
+    // is for whoever wants to watch the refutation, not a gate before moving on. See
+    // revealRemainingSolution's puzzleGen guard for how it stays safe if the player leaves
+    // mid-reveal.
+    els.nextBtn.hidden = false;
     // Defensive framing never actually played m[0] on the board, so the reveal has to
     // start there too, not at m[1] -- otherwise the "line" would skip the blunder itself.
     revealRemainingSolution(framing === 'defensive' ? 0 : state.solutionIdx);
@@ -714,6 +727,10 @@ export function createMode(ctx) {
 
   async function loadNext(retries = 0) {
     if (state.destroyed || state.finished) return;
+    // Invalidate any solution reveal still animating in the background (see
+    // revealRemainingSolution/playAutoMove) so it can never call .move() against the puzzle
+    // this call is about to set up.
+    state.puzzleGen += 1;
     lock();
     clearVerdict();
     clearEmpty();
@@ -747,9 +764,12 @@ export function createMode(ctx) {
     state.resolved = null;
 
     let m0san = null;
+    let preBlunderFen = null;
+    let blunderMove = null;
     if (framing === 'offensive') {
-      const blunder = parseUci(puzzle.m[0]);
-      const played = state.chess.move({ from: blunder.from, to: blunder.to, promotion: blunder.promotion || 'q' });
+      preBlunderFen = state.chess.fen(); // f + p, before the opponent's setup move
+      blunderMove = parseUci(puzzle.m[0]);
+      const played = state.chess.move({ from: blunderMove.from, to: blunderMove.to, promotion: blunderMove.promotion || 'q' });
       if (!played) { loadNext(retries + 1); return; } // defensive guard; setupPuzzle already validated this
       state.solutionIdx = 1;
       // The puzzle position -- what the user is actually being tested on -- for the deep
@@ -776,17 +796,28 @@ export function createMode(ctx) {
     state.orientation = orientation;
     ctx.board.setOrientation(orientation);
     if (typeof ctx.board.randomSeat === 'function') ctx.board.randomSeat(seedFor(puzzle.i));
-    await ctx.board.setPosition(state.chess.fen(), { animate: false });
-    if (state.destroyed) return;
-
-    hideLoading();
-    els.side.dataset.side = sideToMove;
-    els.rating.textContent = String(puzzle.r || '–');
 
     if (framing === 'offensive') {
+      // Show the pre-blunder position first, then animate the opponent's setup move that
+      // creates the tactic -- the player should see it happen, not be dropped straight into
+      // the post-blunder position with no idea what was just played.
+      await ctx.board.setPosition(preBlunderFen, { animate: false });
+      if (state.destroyed) return;
+      hideLoading();
+      els.side.dataset.side = sideToMove;
+      els.rating.textContent = String(puzzle.r || '–');
       els.promptLabel.textContent = `Find the best move for ${sideToMove === 'white' ? 'White' : 'Black'}`;
       els.promptMove.hidden = true;
+      lock();
+      await ctx.board.animateMove(blunderMove.from, blunderMove.to, { fen: state.puzzlePositionFen });
+      if (state.destroyed) return;
+      if (promptStyle === 'highlight') ctx.board.highlight([blunderMove.from, blunderMove.to], 'move');
     } else {
+      await ctx.board.setPosition(state.chess.fen(), { animate: false });
+      if (state.destroyed) return;
+      hideLoading();
+      els.side.dataset.side = sideToMove;
+      els.rating.textContent = String(puzzle.r || '–');
       els.promptLabel.textContent = 'Considering';
       els.promptMove.hidden = !m0san;
       els.promptMove.textContent = m0san || '';
@@ -844,6 +875,7 @@ export function createMode(ctx) {
     recordHistory('skipped');
     spendStrike();
     finalizeRating('skipped');
+    els.nextBtn.hidden = false; // see handleWrong -- don't gate "Next" behind the reveal
     revealRemainingSolution(framing === 'defensive' ? 0 : state.solutionIdx);
   }
 

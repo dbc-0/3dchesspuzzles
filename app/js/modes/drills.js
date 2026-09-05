@@ -285,20 +285,43 @@ function diagonalMates(sq) {
   return ALL_SQUARES.filter((s) => sameDiagonal(sq, s));
 }
 
-/** A square sharing target's file or rank is, by construction, NEVER on its diagonal
- *  (same file => rank-diff alone would have to be 0 too; same rank => file-diff alone
- *  would have to be 0 too) -- so these read as "nearly diagonal" without any risk of
- *  accidentally being a true diagonal mate mislabelled as a decoy. Every square has
- *  exactly 14 such neighbours (7 file-mates + 7 rank-mates), so for the small counts
- *  this mode ever asks for, the pool is never too small to need the plain fallback. */
+/** A decoy sharing target's file or rank is trivially, visibly not a diagonal mate --
+ *  "a1 and c1" or "b4 and b7" give the answer away without any diagonal reasoning at
+ *  all. A genuine near-miss instead:
+ *    - shares NEITHER file nor rank (fileDiff > 0 AND rankDiff > 0) -- ruling out
+ *      exactly the trivial case above;
+ *    - is OFF BY ONE from a true diagonal (|file-diff - rank-diff| === 1) -- the
+ *      near-parallel case that runs alongside the real diagonal and looks
+ *      diagonal-ish at a glance. (Note this makes it the OPPOSITE colour from
+ *      target, same as any square one step off a diagonal always is -- fileDiff +
+ *      rankDiff is odd whenever their difference is 1 -- so this can't also be
+ *      colour-matched; the off-by-one shape is what carries the difficulty.)
+ *    - is preferred FAR from target (Chebyshev distance >= 3) -- close off-by-one
+ *      squares are the easy case (the eye catches the gap immediately), far ones are
+ *      the genuinely hard "runs alongside the diagonal for a while" case.
+ *  Falls back to any non-same-file/rank, non-diagonal square if the near-diagonal
+ *  pool is too small (never happens in practice -- every square has at least a
+ *  dozen -- but kept as a last resort). */
 function nearMissDecoys(target, exclude, count, rng) {
   const A = parseSquare(target);
-  const pool = ALL_SQUARES.filter((s) => {
-    if (s === target || exclude.has(s)) return false;
+  function diffs(s) {
     const B = parseSquare(s);
-    return B.file === A.file || B.rank === A.rank;
+    return { fd: Math.abs(A.file - B.file), rd: Math.abs(A.rank - B.rank) };
+  }
+  function offDiagonalCandidate(s) {
+    if (s === target || exclude.has(s)) return false;
+    const { fd, rd } = diffs(s);
+    if (fd === 0 || rd === 0) return false; // same file/rank -- the trivially-easy case
+    return fd !== rd; // an actual diagonal mate -- never a valid "false" decoy
+  }
+  const nearDiagonal = ALL_SQUARES.filter((s) => offDiagonalCandidate(s) && Math.abs(diffs(s).fd - diffs(s).rd) === 1);
+  const far = nearDiagonal.filter((s) => {
+    const { fd, rd } = diffs(s);
+    return Math.max(fd, rd) >= 3;
   });
-  const source = pool.length >= count ? pool : ALL_SQUARES.filter((s) => s !== target && !exclude.has(s));
+  const source = far.length >= count ? far
+    : nearDiagonal.length >= count ? nearDiagonal
+      : ALL_SQUARES.filter(offDiagonalCandidate);
   return shuffled(source, rng).slice(0, count);
 }
 
@@ -828,7 +851,10 @@ export function createMode(ctx) {
 
     if (drillType === 'color') {
       q.correct = squareColor(target);
-      q.choices = rng() < 0.5 ? ['light', 'dark'] : ['dark', 'light'];
+      // Always Light-then-Dark, left to right -- a fixed layout so the answer is
+      // never findable by "which side is the button on" and the colours below
+      // (white for light, black for dark) stay meaningfully attached to a side.
+      q.choices = ['light', 'dark'];
     } else if (drillType === 'diagonal') {
       const truth = rng() < 0.5;
       if (truth) {
@@ -903,8 +929,11 @@ export function createMode(ctx) {
   function showColorChoices(q) {
     dom.answers.hidden = false;
     dom.answers.replaceChildren();
-    q.choices.forEach((label, i) => {
-      const btn = el('button', `answer ${i === 0 ? 'answer--safe' : 'answer--unsafe'}`, label === 'light' ? 'Light' : 'Dark');
+    q.choices.forEach((label) => {
+      // White/black, not the app's generic safe/unsafe green/red -- this question has
+      // nothing to do with safety, and the colours should look like the square colours
+      // they name.
+      const btn = el('button', `answer ${label === 'light' ? 'answer--light-square' : 'answer--dark-square'}`, label === 'light' ? 'Light' : 'Dark');
       btn.type = 'button';
       btn.dataset.choice = label;
       btn.addEventListener('click', () => onColorAnswer(label, btn));

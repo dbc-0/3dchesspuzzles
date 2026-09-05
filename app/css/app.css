@@ -716,6 +716,20 @@ a {
   color: var(--unsafe-ink);
 }
 
+/* Square-colour drill only: these name an actual square colour, not a safe/unsafe
+   verdict, so they get plain white/black rather than the app's green/red. */
+.answer--light-square {
+  background: #f2f1ec;
+  color: #1a1a1a;
+  border: var(--border-width) solid var(--border);
+}
+
+.answer--dark-square {
+  background: #1a1a1a;
+  color: #f2f1ec;
+  border: var(--border-width) solid var(--border);
+}
+
 .answer:disabled,
 .answer[aria-disabled="true"] {
   cursor: default;
@@ -1111,6 +1125,9 @@ a {
   position: relative;
   display: grid;
   place-items: center;
+  min-width: 0;   /* grid items default to min-width:auto -- without this, nowrap
+                     content (e.g. "5 moves" x5 columns) forces the whole control,
+                     and the screen under it, wider than the viewport on a phone. */
   min-height: 38px;
   padding-inline: var(--space-4);
   border-radius: calc(var(--radius-md) - 4px);
@@ -1123,6 +1140,18 @@ a {
     background-color var(--dur-2) var(--ease-out),
     color var(--dur-2) var(--ease-out),
     box-shadow var(--dur-2) var(--ease-out);
+}
+
+/* A row with more than a couple of options (e.g. visualization's look-ahead picker)
+   needs tighter padding and a smaller label to have any chance of fitting a phone
+   width -- the default sizing above is tuned for 2-3 option rows like the board
+   picker. Letting the label wrap to two lines beats clipping or overflowing. */
+.segmented__option--compact {
+  padding-inline: var(--space-1);
+  font-size: var(--fs-2xs);
+  white-space: normal;
+  line-height: var(--lh-tight, 1.2);
+  text-align: center;
 }
 
 .segmented__option input {

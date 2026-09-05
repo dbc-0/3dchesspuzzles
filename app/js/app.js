@@ -375,6 +375,9 @@ async function route() {
     case '/visualization':
       renderVisualizationSetup();
       break;
+    case '/square-id':
+      renderSquareIdSetup();
+      break;
     case '/play':
       await renderPlay(params);
       break;
@@ -483,7 +486,7 @@ function renderHome() {
                 </span>
                 <span class="mode-card__chevron">${icon('i-chevron')}</span>
               </button>
-              <button class="mode-card" data-go="#/play?mode=drills&amp;drill=square">
+              <button class="mode-card" data-go="#/square-id">
                 <span class="mode-card__icon">${icon('i-cube')}</span>
                 <span class="mode-card__body">
                   <span class="mode-card__title">Square identification</span>
@@ -787,6 +790,50 @@ function renderTacticsSetup() {
 }
 
 /* =============================================================================
+   SQUARE IDENTIFICATION SETUP  —  board only
+
+   The only drill a board applies to at all (see drills.js's file header) --
+   "colour" and "diagonal" are pure recall with no board to show. Defaults to 2D:
+   at 3D's exact top-down seat the first question already looks flat, so nothing
+   about this drill obviously needs the extra dimension, and a player who wants it
+   anyway can still pick it here.
+   ========================================================================== */
+function renderSquareIdSetup() {
+  let board = '2d';
+
+  const screen = fromHTML(`
+    <div class="screen screen--menu">
+      ${appBar({ back: true, title: 'Square identification' })}
+      <div class="screen-body u-scroll">
+        <div class="screen-body__inner">
+          <div class="hero">
+            <h1 class="hero__title">Square identification</h1>
+            <p class="hero__subtitle">A square is named — tap it as fast as you can.</p>
+          </div>
+
+          ${boardPicker(board)}
+        </div>
+      </div>
+      <div class="action-bar">
+        <div class="action-bar__inner">
+          <button class="btn btn--primary btn--lg btn--block" data-role="start">
+            ${icon('i-cube')} Start
+          </button>
+        </div>
+      </div>
+    </div>`);
+
+  wireBoardPicker(screen, board, (value) => { board = value; });
+
+  screen.querySelector('[data-role="start"]').addEventListener('click', () => {
+    navigate(`#/play?mode=drills&drill=square&board=${board}`);
+  });
+
+  wireChrome(screen);
+  mountScreen(screen);
+}
+
+/* =============================================================================
    VISUALIZATION SETUP  —  board and look-ahead depth
 
    Both choices are rating axes, and both were previously unreachable: the home
@@ -818,7 +865,7 @@ function renderVisualizationSetup() {
             <span class="section__title">Look-ahead</span>
             <div class="segmented segmented--block" role="group" aria-label="Look-ahead" data-role="plies">
               ${choices.map((n) => `
-                <label class="segmented__option${n === plies ? ' is-active' : ''}">
+                <label class="segmented__option segmented__option--compact${n === plies ? ' is-active' : ''}">
                   <input type="radio" name="setup-plies" value="${n}"${n === plies ? ' checked' : ''}>
                   <span>${esc(PLY_LABELS[n].label)}</span>
                 </label>`).join('')}
@@ -2623,11 +2670,14 @@ async function renderReview(params) {
 
   // Review in the board the run was PLAYED in, not whatever the global setting
   // happens to be now — the bucket is where the run's board was written down.
-  // A tab opened straight onto a review url has no run to inherit a board from,
-  // so it falls back to the global setting.
-  const runBoard = lastSummary && lastSummary.bucket
-    ? parseBucket(lastSummary.bucket).board
-    : settings.get().board;
+  // A mid-run history tap (Blunder Rush's strip) opens review in a NEW TAB, which
+  // has no lastSummary to inherit from, so it stamps `?board=` on the url itself
+  // (see reviewHref() in modes/blunderrush.js) -- that wins when present. Only a
+  // tab with neither a summary nor an explicit param falls back to the global
+  // setting.
+  const boardOverride = params.get('board') === '3d' ? '3d' : params.get('board') === '2d' ? '2d' : null;
+  const runBoard = boardOverride
+    || (lastSummary && lastSummary.bucket ? parseBucket(lastSummary.bucket).board : settings.get().board);
   const reviewSettings = { ...settings.get(), board: runBoard };
 
   const gameUrl = entry.url || entry.gameUrl || '';
