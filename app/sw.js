@@ -47,7 +47,7 @@
                  build until every tab closes.
    ========================================================================== */
 
-const VERSION = 'v6-positional';
+const VERSION = 'v7-positional-recovery';
 const SHELL_CACHE = `tt-shell-${VERSION}`;
 const DATA_CACHE = 'tt-data';           // deliberately unversioned: bands are immutable
 const KEEP = new Set([SHELL_CACHE, DATA_CACHE]);

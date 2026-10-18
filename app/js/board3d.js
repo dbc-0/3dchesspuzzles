@@ -2426,7 +2426,7 @@ export function createBoard(container, options = {}) {
     if (candidate) {
       if (!mat.userData.perArrow) mat=mat.clone();
       mat.userData={...mat.userData,perArrow:true};
-      applyColorToken(mat, candidate.color || token('--arrow'), ARROW_BASE_OPACITY * (candidate.opacity ?? 1));
+      applyColorToken(mat, candidate.color ? parseCssColor(candidate.color, TOKEN_FALLBACKS['--arrow']) : token('--arrow'), ARROW_BASE_OPACITY * (candidate.opacity ?? 1));
     }
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(a.x, TOP_Y + 0.06, a.z);

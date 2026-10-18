@@ -8,9 +8,9 @@ const duration=ms=>`${(ms/1000).toFixed(1)}s`;
 const label=v=>({timed:'5-minute Rush',survival:'Survival',fixed:'Fixed-cycle study',theme:'Theme practice'}[v]||v);
 const themeOptions=()=>`<option value="all">All themes</option>${(catalog.practiceThemes||catalog.themes||[]).filter(t=>E.eligibleCases(catalog,t.id).length).map(t=>`<option value="${esc(t.id)}">${esc(t.label)} (${E.eligibleCases(catalog,t.id).length})</option>`).join('')}`;
 
-export function createSetup(root,{persistence,go,board='2d'}) {
-  let saved=null,error='';
-  try{saved=E.parseStore(persistence.get());}catch(e){error=e.message;}
+export function createSetup(root,{persistence,go,board='2d',confirm,notify}) {
+  let saved=null,error='',savedRaw;
+  try{savedRaw=persistence.get();saved=E.parseStore(savedRaw);}catch(e){error=e.message;}
   root.innerHTML=`<header class="app-bar"><button class="btn" data-home>Home</button><h1>Positional</h1></header>
     <div class="screen-body u-scroll"><div class="screen-body__inner pos-setup">
     <p>Choose the inferior quiet move. Review the explanation after your run.</p>
@@ -24,6 +24,7 @@ export function createSetup(root,{persistence,go,board='2d'}) {
     <p class="pos-small">Fixed cycles pin their corpus, move choices and board setting. Letters change each cycle. Times are active wall-clock time, excluding pauses, hidden tabs and review, not a measurement of pure thinking. Results stay on this device.</p>
     ${error?`<p role="alert">Saved training could not be read: ${esc(error)}. Original data was kept.</p>`:''}
     ${saved?.active?`<button class="btn" data-resume>Resume saved ${esc(label(saved.active.config.variant))} · ${saved.active.attempts.length} answered · ${saved.active.config.choiceCount} choices</button>`:''}
+    ${saved?.active?.config.board==='3d'?'<button class="btn" data-recover>Continue saved run in 2D · keep progress</button>':''}
     ${saved?.history.length?`<h2>Previous runs</h2><div class="pos-history">${saved.history.map((r,i)=>`<button class="btn" data-history="${i}">${esc(label(r.config.variant))} · ${r.score}/${r.attempts.length} · ${r.config.choiceCount} choices · ${r.config.board.toUpperCase()} · ${formatTime(r.activeMs)}${r.config.variant==='fixed'?` · cycle ${r.cycleNumber}`:''}</button>`).reverse().join('')}</div>`:''}
     <details><summary>Content and sources</summary><p>${esc(catalog.limits?.join(' ')||'Teaching sample. No measured puzzle ratings.')}</p><p>Chess positions from Lichess games (CC0). Authored teaching commentary. Engine checks: Stockfish 17.1. Human-model illustrations: Maia3-79M where labeled; engine fallbacks are labeled separately. No engine or model runs in this app.</p></details>
     </div></div>`;
@@ -42,15 +43,19 @@ export function createSetup(root,{persistence,go,board='2d'}) {
     if(count<100)root.querySelector('[name=size]').value='0';
   };
   root.addEventListener('change',sync);sync();
-  root.onclick=e=>{
+  root.onclick=async e=>{
     if(e.target.closest('[data-home]'))go('#/');
     if(e.target.closest('[data-start]')){
-      if(saved?.active){go(`#/play?mode=positional&resume=1&board=${saved.active.config.board}`);return;}
+      if(saved?.active){
+        if(!confirm||!await confirm({title:'Start a new run?',text:'The unfinished run will end. Its answered positions stay in review.',confirmLabel:'End old run and start',cancelLabel:'Keep saved run'}))return;
+        try{const updated=E.endSavedRun(saved),next=JSON.stringify(updated);if(!persistence.compareAndSet(savedRaw,next))throw new Error('Saved progress changed or storage is full. Reopen Modes before starting.');saved=updated;savedRaw=next;}catch(e){notify?.(e.message,{kind:'error'});return;}
+      }
       const p=new URLSearchParams({mode:'positional'});
       for(const k of ['variant','choices','theme','size','board'])p.set(k,root.querySelector(`[name=${k}]`).value);
       if(['timed','survival'].includes(p.get('variant')))p.set('choices','2');
       go(`#/play?${p}`);
     }
+    if(e.target.closest('[data-recover]'))go('#/play?mode=positional&resume=1&recover2d=1&board=2d');
     if(e.target.closest('[data-resume]'))go(`#/play?mode=positional&resume=1&board=${saved.active.config.board}`);
     const h=e.target.closest('[data-history]');if(h)go(`#/play?mode=positional&history=${h.dataset.history}&board=${saved.history[Number(h.dataset.history)].config.board}`);
   };
@@ -71,6 +76,7 @@ export function createMode(ctx) {
     if(store.active)throw new Error('A saved positional run exists. Resume it from Positional setup first.');
     run=E.newRun(catalog,{variant:ctx.config.variant,choiceCount:ctx.config.choices,theme:['timed','survival'].includes(ctx.config.variant)?'all':ctx.config.theme,size:ctx.config.size,board:ctx.settings.board});
   }
+  if(ctx.config.recover2d&&run.status!=='complete')run=E.recoverIn2D(run);
   E.validateRun(run,data);
   board.setInteractive?.(false);
   function persist(){
@@ -114,7 +120,7 @@ export function createMode(ctx) {
     boardAt(p,item.options);
     root.querySelector('.pos-board').hidden=run.status==='paused'&&run.reason!=='feedback';
     if(run.status==='paused'&&run.reason!=='feedback'){
-      controls.innerHTML=`<p>${run.reason==='ready'?'Ready. The clock starts when you begin.':'Paused. Your progress is saved on this device.'}</p><button class="btn btn--primary" data-action="resume" ${storageError?'disabled':''}>${run.reason==='ready'?'Begin':'Resume'}</button><button class="btn" data-action="end">End and review</button>`;
+      controls.innerHTML=`<p>${run.reason==='ready'?'Ready. The clock starts when you begin.':'Paused. Your progress is saved on this device.'}</p><button class="btn btn--primary" data-action="resume" ${storageError?'disabled':''}>${run.reason==='ready'?'Begin':'Resume'}</button><button class="btn" data-action="end">End and review</button>${run.reason!=='ready'?'<a class="btn" href="#/positional">Save &amp; return to modes</a>':''}`;
     }else{
       controls.innerHTML=`<div class="pos-choices" style="--choices:${item.options.length}">${item.options.map((uci,i)=>`<button class="btn pos-choice ${selected===uci?'is-selected':''}" data-choice="${uci}" aria-pressed="${selected===uci}" ${run.status!=='playing'?'disabled':''} style="--choice:${COLORS[i]}"><strong>${LETTERS[i]}</strong><span>${esc(p.options.find(o=>o.uci===uci).san)}</span></button>`).join('')}</div>
       <button class="btn btn--primary pos-submit" data-action="submit" ${!selected||run.status!=='playing'?'disabled':''}>Submit choice</button>
@@ -128,6 +134,7 @@ export function createMode(ctx) {
     if(!filtered.some(x=>x.i===reviewIndex))reviewIndex=filtered[0]?.i??0;
     const a=run.attempts[reviewIndex],p=a&&data.cases.find(p=>p.id===a.id);
     el.innerHTML=`<h2>Run review · ${run.attempts.length?Math.round(run.score/run.attempts.length*100):0}%</h2><p>${duration(run.activeMs)} active time · ${esc(run.version)} · ${run.config.choiceCount} choices</p>
+      ${run.boardRecovery?`<p class="pos-small">Recovered from 3D to 2D after ${run.boardRecovery.afterAttempts} answers. This run is kept separate from unchanged-board comparisons.</p>`:''}
       <div class="pos-actions"><button class="btn" data-filter="all" aria-pressed="${filter==='all'}">All (${run.attempts.length})</button><button class="btn" data-filter="misses" aria-pressed="${filter==='misses'}">Misses (${run.mistakes})</button></div>
       <div class="pos-review-tabs">${filtered.map(({a,i})=>`<button class="btn" data-review="${i}" aria-pressed="${i===reviewIndex}">${i+1} ${a.correct?'✓':'×'}</button>`).join('')}</div>
       ${!filtered.length?`<p>${filter==='misses'?'No misses in this run.':'No positions answered.'}</p>`:''}
@@ -193,7 +200,8 @@ export function createMode(ctx) {
     if(e.key==='Enter'&&run.status==='playing'&&(!e.target.closest?.('button,a')||e.target.matches?.('[data-choice]'))){submit();e.preventDefault();}
   }
   root.addEventListener('click',click);
-  root.addEventListener('change',e=>{if(e.target.matches('[data-line-type]')){lineType=e.target.value;lineIndex=0;render();}});
+  const change=e=>{if(e.target.matches('[data-line-type]')){lineType=e.target.value;lineIndex=0;render();}};
+  root.addEventListener('change',change);
   window.addEventListener('keydown',key);
   const hide=()=>{if(run.status==='playing'||run.reason==='feedback')stop('hidden');};
   window.addEventListener('pagehide',hide);window.addEventListener('blur',hide);
@@ -203,9 +211,12 @@ export function createMode(ctx) {
     const clock=root.querySelector('[data-clock]');if(clock)clock.textContent=formatTime(run.config.variant==='timed'?E.remaining(run):E.checkpoint(run).activeMs);
   },200);
   const saver=setInterval(()=>{if(run.status==='playing'){run=E.checkpoint(run);if(!persist())render();}},5000);
-  persist();complete();lineIndex=-1;render();
+  function teardown(){clearTimeout(feedbackTimer);clearInterval(ticker);clearInterval(saver);stopped=true;window.removeEventListener('keydown',key);window.removeEventListener('pagehide',hide);window.removeEventListener('blur',hide);root.removeEventListener('click',click);root.removeEventListener('change',change);}
+  try{persist();complete();lineIndex=-1;render();}catch(error){teardown();throw error;}
   return {
-    destroy(){clearTimeout(feedbackTimer);clearInterval(ticker);clearInterval(saver);run=E.pause(run);persist();stopped=true;window.removeEventListener('keydown',key);window.removeEventListener('pagehide',hide);window.removeEventListener('blur',hide);root.removeEventListener('click',click);},
+    destroy(){run=E.pause(run);persist();teardown();},
+    hasProgress(){return run.status!=='complete'&&(run.attempts.length>0||E.checkpoint(run).activeMs>0);},
+    quit(){if(run.status!=='complete')finish('ended');},
     pause(){hide();},resume(){/* Explicit resume prevents background time from accruing. */},
     restart(){if(run.status!=='complete')finish('ended');location.hash='#/positional';},
   };

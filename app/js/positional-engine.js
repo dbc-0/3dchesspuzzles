@@ -30,7 +30,7 @@ export function eligibleCases(catalog, theme = 'all') {
   return catalog.cases.filter(p => theme === 'all' || (p.themeIds || []).includes(theme) || group?.tags.some(t=>(p.themeIds||[]).includes(t)));
 }
 export function comparisonKey(run) {
-  return [run.version, run.config.variant, run.config.theme, run.config.choiceCount, run.config.size, run.config.board].join(':');
+  return [run.version, run.config.variant, run.config.theme, run.config.choiceCount, run.config.size, run.config.board, ...(run.boardRecovery?['recovered-3d-to-2d']:[])].join(':');
 }
 function makeDeck(catalog, config, seed, previous = null) {
   const rng = seededRandom(seed);
@@ -77,6 +77,13 @@ export function resume(run, now = Date.now()) {
   if (run.status !== 'paused') return run;
   return {...run,status:'playing',runningSince:now,reason:null};
 }
+export function recoverIn2D(run, now = Date.now()) {
+  assert(run.status!=='complete','completed reviews keep their recorded board');
+  if(run.config.board==='2d')return run;
+  // Restoration must never charge time spent outside the app.
+  return {...run,status:'paused',reason:'recovered',runningSince:null,config:{...run.config,board:'2d'},
+    boardRecovery:{from:'3d',to:'2d',afterAttempts:run.attempts.length,at:now}};
+}
 export function remaining(run, now = Date.now()) {
   return run.config.variant === 'timed' ? Math.max(0,300000-checkpoint(run,now).activeMs) : Infinity;
 }
@@ -113,6 +120,7 @@ export function validateRun(run,catalog) {
   assert(run && run.schema===1 && run.version===catalog.version,'saved version mismatch');
   assert(VARIANTS.includes(run.config?.variant) && [2,3].includes(run.config.choiceCount),'invalid saved mode');
   assert(['2d','3d'].includes(run.config.board) && [0,100].includes(run.config.size),'invalid saved configuration');
+  if(run.boardRecovery){const b=run.boardRecovery;assert(b.from==='3d'&&b.to==='2d'&&run.config.board==='2d'&&finite(b.at)&&Number.isInteger(b.afterAttempts)&&b.afterAttempts>=0&&b.afterAttempts<=run.attempts.length,'invalid board recovery');}
   if(['timed','survival'].includes(run.config.variant))assert(run.config.choiceCount===2 && run.config.theme==='all','invalid rush choices');
   assert(['playing','paused','complete'].includes(run.status),'invalid saved status');
   if(run.status==='complete')assert(finite(run.endedAt)&&['time','mistakes','complete','ended'].includes(run.reason),'invalid completed state');
@@ -182,4 +190,10 @@ export function saveRun(store,run,catalog) {
     else out.active=store.active;
   }
   return out;
+}
+
+export function endSavedRun(store, now=Date.now()) {
+  if(!store.active)return store;
+  const restored={...store.active,status:"paused",runningSince:null,reason:"restored"};
+  return saveRun(store,finish(restored,"ended",now),store.corpora[restored.version]);
 }

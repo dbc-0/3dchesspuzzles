@@ -24,7 +24,7 @@ Chess game data: [Lichess database, CC0](https://database.lichess.org/). Human-m
 
 Completed histories retain their pinned catalogs and support All/Misses review. The bounded app stats log is a secondary summary only, never the source of truth for fixed cycles. Corrupt saved data is left untouched and reports an error. Storage failures/conflicting-tab writes pause the run rather than overwriting older data. There is no external telemetry or cross-device synchronization.
 
-Active wall-clock time excludes explicit pauses, hidden tabs, focus loss, feedback transitions and review. Reload restores paused. Answers save immediately and elapsed time checkpoints every five seconds; a crash can lose up to five seconds of uncheckpointed time. Time is not a measurement of pure thinking. Compare like-for-like corpus, theme, mode, choice count and board setting; these axes are saved with each run.
+Active wall-clock time excludes explicit pauses, hidden tabs, focus loss, feedback transitions and review. Reload restores paused. Header Quit ends the run and keeps answered positions in review. Pause offers a separate saved return to Modes. Starting a new run asks before ending an unfinished one; Resume alone resumes it. An explicit 3D-to-2D recovery keeps answers and marks that run separately from unchanged-board comparisons. Answers save immediately and elapsed time checkpoints every five seconds; a crash can lose up to five seconds of uncheckpointed time. Time is not a measurement of pure thinking. Compare like-for-like corpus, theme, mode, choice count and board setting; these axes are saved with each run.
 
 The existing private pilot is a different origin. Its saved cycles remain there; this PR does not claim automatic migration of cross-origin browser storage.
 
@@ -36,6 +36,8 @@ From the repository root, with Node supporting native ES modules:
 node app/test/positional-data.test.mjs
 node app/test/positional-engine.test.mjs
 node app/test/positional-board-adapters.test.mjs
+node app/test/positional-startup.test.mjs
+node app/test/positional-recovery.test.mjs
 ```
 
 No package installation or build is required. Serve the repository root, then open `app/`.

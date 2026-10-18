@@ -61,11 +61,8 @@ import { START_FEN } from './board-interface.js';
 const MODES = {
   positional: { title: 'Positional', defaultBoard: '2d', load: () => import('./modes/positional.js') },
   blunderrush: { title: 'Blunder Rush', load: () => import('./modes/blunderrush.js') },
-  // Perspective solving is the reason this app exists, so Tactics opens in 3D
-  // unless the setup screen says otherwise. The tile is named "Tactics", not
-  // "3D Tactics": the dimension is a per-run choice the user makes (and one of
-  // the rating axes), not part of the mode's identity.
-  tactics: { title: 'Tactics', defaultBoard: '3d', load: () => import('./modes/tactics.js') },
+  // 2D is the default; 3D remains an explicit setup choice.
+  tactics: { title: 'Tactics', defaultBoard: '2d', load: () => import('./modes/tactics.js') },
   visualization: { title: 'Visualization', load: () => import('./modes/visualization.js') },
   drills: { title: 'Exercises', load: () => import('./modes/drills.js') },
 };
@@ -569,7 +566,7 @@ async function renderPositionalSetup() {
   try {
     const {createSetup} = await import('./modes/positional.js');
     if(currentRoute!==expectedRoute)return;
-    createSetup(screen, {persistence: positionalPersistence(), go: navigate, board: settings.get().board});
+    createSetup(screen, {persistence: positionalPersistence(), go: navigate, board: '2d', confirm: ui.confirm, notify: ui.toast});
     mountScreen(screen);
   } catch(err) {
     if(currentRoute===expectedRoute)renderErrorScreen({title:'Positional',message:'Positional content could not be loaded.',detail:String(err.message||err)});
@@ -1221,20 +1218,25 @@ async function renderPlay(params) {
     || (['offensive', 'defensive'].includes(params.get('framing')) ? params.get('framing') : 'offensive');
 
   const config = {
-    variant: params.get('variant') || (modeId === 'blunderrush' ? 'timed' : 'practice'),
+    variant: params.get('variant') || (['blunderrush', 'positional'].includes(modeId) ? 'timed' : 'practice'),
     band: Number(params.get('band')) || s.rating,
     perspective,
     framing,
   };
   if (modeId === 'positional') {
+    // Installed apps can reopen an old play/resume URL without a mode variant.
+    // Saved runs still supply their pinned configuration inside createMode.
+    if (!['timed', 'survival', 'fixed', 'theme'].includes(config.variant)) config.variant = 'timed';
     config.choices = Number(params.get('choices')) === 2 ? 2 : 3;
     config.theme = params.get('theme') || 'all';
     config.size = Number(params.get('size')) === 100 ? 100 : 0;
     config.resume = params.get('resume') === '1';
+    config.recover2d = params.get('recover2d') === '1';
     config.history = params.has('history') && /^\d+$/.test(params.get('history')) ? Number(params.get('history')) : null;
     const saved = store.get('tt.positional.v1');
     const pinned = config.history !== null ? saved?.history?.[config.history] : saved?.active;
     if (['2d','3d'].includes(pinned?.config?.board)) boardParam = pinned.config.board;
+    if (config.recover2d) { boardParam = '2d'; settings.set({board:'2d'}); }
   }
   const drill = params.get('drill');
   if (drill) config.drill = drill;
@@ -1318,6 +1320,10 @@ async function renderPlay(params) {
   session.runSettings = { ...s, board: chosenBoard };
   session.bucket = bucketForRun(modeId, session.runSettings, config);
 
+  const recover2d = modeId === 'positional' && chosenBoard === '3d' ? () => {
+    const next = new URLSearchParams(params); next.set('recover2d','1'); next.set('board','2d');
+    navigate(`#/play?${next}`);
+  } : null;
   let board;
   try {
     board = await createBoardHandle(boardEl, () => session.runSettings, boardOptions);
@@ -1329,6 +1335,7 @@ async function renderPlay(params) {
     renderErrorScreen({
       title,
       message: 'The board renderer could not start on this device.',
+      recovery: recover2d,
       detail: String((err && err.message) || err),
     });
     return;
@@ -1360,9 +1367,9 @@ async function renderPlay(params) {
     hideLoading();
     session.handle = createUnavailableMode(ctx, {
       title,
-      headline: `${title} isn't installed yet`,
-      detail: `app/js/modes/${modeId}.js could not be loaded. The rest of the app works — this drill will appear as soon as the module lands.`,
-      retry: () => { currentRoute = ''; route(); },
+      headline: `${title} could not load`,
+      detail: `${String(loadError.message || loadError)}. Connect to the internet and try again. Saved progress is kept.`,
+      retry: () => location.reload(),
     });
   } else {
     try {
@@ -1373,6 +1380,7 @@ async function renderPlay(params) {
       session.handle = createUnavailableMode(ctx, {
         title,
         headline: `${title} failed to start`,
+        recovery: recover2d,
         detail: String((err && err.message) || err),
         retry: () => { currentRoute = ''; route(); },
       });
@@ -1692,7 +1700,16 @@ async function requestExit() {
   const session = host;
   if (!session) return;
 
-  if (session.modeId === 'positional') { navigate('#/positional', {replace:true}); return; }
+  if (session.modeId === 'positional') {
+    if (session.handle?.hasProgress?.() && !await ui.confirm({title:'Quit this run?',text:'This ends the current run. Your answered positions stay in review. Use Pause & save to continue later.',confirmLabel:'Quit to modes',cancelLabel:'Keep playing',danger:true})) return;
+    if(host!==session)return;
+    if(session.handle?.quit)session.handle.quit();
+    else {
+      try {const E=await import('./positional-engine.js'),p=positionalPersistence(),raw=p.get(),next=E.endSavedRun(E.parseStore(raw));if(!p.compareAndSet(raw,JSON.stringify(next)))throw new Error('Saved progress changed. Please reopen Modes.');}
+      catch(e){ui.toast(e.message,{kind:'error'});return;}
+    }
+    navigate('#/positional', {replace:true}); return;
+  }
   if (runInProgress(session)) {
     const score = session.headerState && session.headerState.score;
     const ok = await ui.confirm({
@@ -1719,7 +1736,10 @@ async function requestExit() {
 async function requestRestart() {
   const session = host;
   if (!session) return;
-  if (session.modeId === 'positional') { session.handle.restart(); return; }
+  if (session.modeId === 'positional') {
+    if (session.handle?.hasProgress?.() && !await ui.confirm({title:'End this run?',text:'Your answers stay in review. Then choose a new run.',confirmLabel:'End and choose',cancelLabel:'Keep playing',danger:true})) return;
+    if(host!==session)return;session.handle.restart(); return;
+  }
   const score = session.headerState && session.headerState.score;
   const ok = await ui.confirm({
     title: 'Restart this run?',
@@ -1880,30 +1900,37 @@ function setHeader(session, spec) {
    FALLBACK MODE — a real ModeHandle, so a missing module exercises exactly the
    same shell path a real drill does.
    -------------------------------------------------------------------------- */
-function createUnavailableMode(ctx, { title, headline, detail, retry }) {
+function createUnavailableMode(ctx, { title, headline, detail, retry, recovery }) {
+  // A mode can throw after adding its layout class. Do not inherit its flex
+  // sizing or inject a board into a size-contained error stage.
+  ctx.root.classList.remove('screen--positional', 'screen--play');
+  ctx.root.classList.add('screen--unavailable');
   ctx.root.replaceChildren();
+  const header = fromHTML(`<header class="app-bar"><span data-shell="restart-slot"></span><div class="app-bar__title" data-shell="header">${esc(title)}</div><span data-shell="settings-slot"></span></header>`);
   const body = fromHTML(`
-    <div class="stage">
+    <div class="screen-body u-scroll" role="alert">
       <div class="empty">
         ${icon('i-puzzle')}
         <p><strong>${esc(headline)}</strong></p>
-        <p>${esc(detail)}</p>
+        <p style="overflow-wrap:anywhere">${esc(detail)}</p>
+        <p>Saved progress is kept. You can go back without clearing app data.</p>
       </div>
     </div>`);
   const actions = fromHTML(`
     <div class="action-bar">
       <div class="action-bar__inner" style="display:grid;gap:var(--space-2)">
+        ${recovery?'<button class="btn btn--primary btn--block" data-act="recover">Continue in 2D · keep progress</button>':''}
         <button class="btn btn--secondary btn--block" data-act="retry">${icon('i-refresh')} Try again</button>
         <button class="btn btn--ghost btn--block" data-act="home">Back to home</button>
       </div>
     </div>`);
-  ctx.root.append(body, actions);
-  ctx.ui.setHeader(title);
+  ctx.root.append(header, body, actions);
 
+  if (recovery) actions.querySelector('[data-act="recover"]').addEventListener('click', recovery);
   actions.querySelector('[data-act="retry"]').addEventListener('click', () => retry && retry());
   actions.querySelector('[data-act="home"]').addEventListener('click', () => navigate('#/'));
 
-  return { destroy() {}, restart() { retry && retry(); } };
+  return { destroy() {}, hasProgress(){return Boolean(ctx.persistence);}, restart() { retry && retry(); } };
 }
 
 /* =============================================================================
@@ -3886,7 +3913,7 @@ async function openOfflineScreen() {
   navigate('#/offline');
 }
 
-function renderErrorScreen({ title, message, detail }) {
+function renderErrorScreen({ title, message, detail, recovery }) {
   const screen = fromHTML(`
     <div class="screen">
       ${appBar({ back: true, title: esc(title) })}
@@ -3901,10 +3928,12 @@ function renderErrorScreen({ title, message, detail }) {
       </div>
       <div class="action-bar">
         <div class="action-bar__inner">
+          ${recovery?'<button class="btn btn--primary btn--block" data-act="recover">Continue in 2D · keep progress</button>':''}
           <button class="btn btn--primary btn--lg btn--block" data-act="home">Back to home</button>
         </div>
       </div>
     </div>`);
+  if (recovery) screen.querySelector('[data-act="recover"]').addEventListener('click', recovery);
   screen.querySelector('[data-act="home"]').addEventListener('click', () => navigate('#/'));
   wireChrome(screen);
   mountScreen(screen);
