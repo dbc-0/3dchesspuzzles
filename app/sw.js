@@ -47,7 +47,7 @@
                  build until every tab closes.
    ========================================================================== */
 
-const VERSION = 'v8-positional-interface-2';
+const VERSION = 'v9-positional-strict50';
 const SHELL_CACHE = `tt-shell-${VERSION}`;
 const DATA_CACHE = 'tt-data';           // deliberately unversioned: bands are immutable
 const KEEP = new Set([SHELL_CACHE, DATA_CACHE]);
