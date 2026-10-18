@@ -49,3 +49,8 @@ Cloud-browser QA covered: 13 misses without fixed-set termination; a second cycl
 ## Future content increments
 
 Only replace the default catalog with an independently approved public projection and matching theme map/manifest. Bump the immutable corpus version, retain exact source versions, update the projection hash and binary-control receipts, and rerun the tests. Do not republish a changed payload under an existing version. Preserve the compact played-line fields and all displayed caveats; keep private evidence out of this repository. Position deduplication uses board, side, castling and legal en-passant state, excluding move clocks.
+
+### Shared interface
+Positional setup uses the same mode cards and segmented controls as Blunder Rush. Play keeps the board and preview/submit controls in the shared fixed stage/action-bar layout; the score, lives and clock sit in the app bar. Long explanations use a separate scrolling end-review screen. This is a presentation-only update: corpus, scoring, timing, saved-run identity and recovery rules are unchanged.
+
+`node app/test/positional-interface.test.mjs` checks the 2/3-choice render contracts, paused board, separate review layout and all four setup routes. Actual phone-sized cloud browser checks supplement these markup tests; physical iOS/WebGL rendering is not implied.

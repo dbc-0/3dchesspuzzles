@@ -30,4 +30,5 @@ jobs:
       - run: node app/test/positional-board-adapters.test.mjs
       - run: node app/test/positional-startup.test.mjs
       - run: node app/test/positional-recovery.test.mjs
+      - run: node app/test/positional-interface.test.mjs
       - run: node --check app/js/app.js && node --check app/js/modes/positional.js && node --check app/sw.js

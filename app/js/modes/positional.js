@@ -6,31 +6,37 @@ export const meta={id:'positional',title:'Positional',boardOptions:{board:'2d'}}
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const duration=ms=>`${(ms/1000).toFixed(1)}s`;
 const label=v=>({timed:'5-minute Rush',survival:'Survival',fixed:'Fixed-cycle study',theme:'Theme practice'}[v]||v);
+const icon=name=>`<svg aria-hidden="true"><use href="#${name}"></use></svg>`;
 const themeOptions=()=>`<option value="all">All themes</option>${(catalog.practiceThemes||catalog.themes||[]).filter(t=>E.eligibleCases(catalog,t.id).length).map(t=>`<option value="${esc(t.id)}">${esc(t.label)} (${E.eligibleCases(catalog,t.id).length})</option>`).join('')}`;
 
 export function createSetup(root,{persistence,go,board='2d',confirm,notify}) {
   let saved=null,error='',savedRaw;
   try{savedRaw=persistence.get();saved=E.parseStore(savedRaw);}catch(e){error=e.message;}
-  root.innerHTML=`<header class="app-bar"><button class="btn" data-home>Home</button><h1>Positional</h1></header>
+  const variants=[
+    ['timed','rush','i-timer','Timed','Beat the clock, as many as you can','5 min · 3 mistakes · 2 choices'],
+    ['survival','survival','i-heart','Survival','No clock. Three mistakes and out','Untimed · 2 choices'],
+    ['fixed','classic','i-puzzle','Fixed-cycle study','Work through a set, then repeat it','No lives limit · 2 or 3 choices'],
+    ['theme','rated','i-target','Theme practice','Focus on one area of your game','Continuous · 2 or 3 choices'],
+  ];
+  const segmented=(name,options,value)=>`<div class="segmented segmented--block" role="group" aria-label="${name==='board'?'Board':'Study choices'}">${options.map(([v,text])=>`<label class="segmented__option"><input type="radio" name="${name}" value="${v}" ${v===value?'checked':''}><span>${text}</span></label>`).join('')}</div>`;
+  const value=name=>(root.querySelector(`[name=${name}]:checked`)||root.querySelector(`[name=${name}]`)).value;
+  root.innerHTML=`<header class="app-bar"><button class="icon-btn" data-home aria-label="Home">${icon('i-back')}</button><div class="app-bar__title">Positional</div><span></span></header>
     <div class="screen-body u-scroll"><div class="screen-body__inner pos-setup">
-    <p>Choose the inferior quiet move. Review the explanation after your run.</p>
-    <p>${catalog.cases.length} approved three-choice positions available. Difficulty is provisional. Repeated passes reuse this finite pool.</p>
-    <label>Mode<select name="variant"><option value="timed">5-minute Rush · 3 mistakes · 2 choices</option><option value="survival">Survival · 3 mistakes · 2 choices</option><option value="fixed">Fixed-cycle study · all positions</option><option value="theme">Continuous theme practice</option></select></label>
-    <label data-choice-label>Study choices<select name="choices"><option value="3">3 moves · 1 bad + 2 good</option><option value="2">2 moves · 1 bad + 1 good</option></select></label>
-    <label data-theme-label>Theme<select name="theme">${themeOptions()}</select><small data-theme-tags></small></label>
-    <label data-size-label>Fixed set<select name="size"><option value="0">Starter set · ${catalog.cases.length} positions</option><option value="100" ${catalog.cases.length<100?'disabled':''}>100 unique positions${catalog.cases.length<100?' · not ready yet':''}</option></select></label>
-    <label>Board<select name="board"><option value="2d">2D</option><option value="3d">3D</option></select></label>
-    <button class="btn btn--primary" data-start ${error?'disabled':''}>Start</button>
-    <p class="pos-small">Fixed cycles pin their corpus, move choices and board setting. Letters change each cycle. Times are active wall-clock time, excluding pauses, hidden tabs and review, not a measurement of pure thinking. Results stay on this device.</p>
-    ${error?`<p role="alert">Saved training could not be read: ${esc(error)}. Original data was kept.</p>`:''}
-    ${saved?.active?`<button class="btn" data-resume>Resume saved ${esc(label(saved.active.config.variant))} · ${saved.active.attempts.length} answered · ${saved.active.config.choiceCount} choices</button>`:''}
-    ${saved?.active?.config.board==='3d'?'<button class="btn" data-recover>Continue saved run in 2D · keep progress</button>':''}
-    ${saved?.history.length?`<h2>Previous runs</h2><div class="pos-history">${saved.history.map((r,i)=>`<button class="btn" data-history="${i}">${esc(label(r.config.variant))} · ${r.score}/${r.attempts.length} · ${r.config.choiceCount} choices · ${r.config.board.toUpperCase()} · ${formatTime(r.activeMs)}${r.config.variant==='fixed'?` · cycle ${r.cycleNumber}`:''}</button>`).reverse().join('')}</div>`:''}
-    <details><summary>Content and sources</summary><p>${esc(catalog.limits?.join(' ')||'Teaching sample. No measured puzzle ratings.')}</p><p>Chess positions from Lichess games (CC0). Authored teaching commentary. Engine checks: Stockfish 17.1. Human-model illustrations: Maia3-79M where labeled; engine fallbacks are labeled separately. No engine or model runs in this app.</p></details>
-    </div></div>`;
-  root.querySelector('[name=board]').value=board;
+      <div class="hero"><h1 class="hero__title">Positional</h1><p class="hero__subtitle">Find the inferior quiet move. Explore the explanation after your run.</p><p class="pos-small">${catalog.cases.length} positions · difficulty provisional</p></div>
+      ${error?`<p role="alert">Saved training could not be read: ${esc(error)}. Original data was kept.</p>`:''}
+      ${saved?.active?`<section class="section pos-saved"><span class="section__title">Saved run</span><button class="btn btn--block" data-resume>Resume ${esc(label(saved.active.config.variant))} · ${saved.active.attempts.length} answered</button>${saved.active.config.board==='3d'?'<button class="btn btn--block" data-recover>Continue saved run in 2D · keep progress</button>':''}</section>`:''}
+      <section class="section"><span class="section__title">How do you want to play?</span><div class="mode-list" role="radiogroup" aria-label="Mode">${variants.map(([v,style,glyph,title,desc,meta])=>`<label class="mode-card mode-card--${style}"><input class="u-visually-hidden" type="radio" name="variant" value="${v}" ${v==='timed'?'checked':''}><span class="mode-card__icon">${icon(glyph)}</span><span class="mode-card__body"><span class="mode-card__title">${title}</span><span class="mode-card__desc">${desc}</span><span class="mode-card__meta">${meta}</span></span><span class="mode-card__chevron">${icon('i-chevron')}</span></label>`).join('')}</div></section>
+      <section class="section" data-choice-label><span class="section__title">Move choices</span>${segmented('choices',[['3','3 moves'],['2','2 moves']],'3')}<small class="pos-small">One inferior move, plus one or two sound alternatives.</small></section>
+      <section class="section" data-theme-label><label class="pos-field"><span class="section__title">Theme</span><select name="theme">${themeOptions()}</select></label><small class="pos-small" data-theme-tags></small></section>
+      <section class="section" data-size-label><label class="pos-field"><span class="section__title">Fixed set</span><select name="size"><option value="0">Starter set · ${catalog.cases.length} positions</option><option value="100" ${catalog.cases.length<100?'disabled':''}>100 unique positions${catalog.cases.length<100?' · not ready yet':''}</option></select></label></section>
+      <section class="section"><span class="section__title">Board</span>${segmented('board',[['2d','2D'],['3d','3D']],board==='3d'?'3d':'2d')}</section>
+      ${saved?.history.length?`<details class="pos-details"><summary>Previous runs (${saved.history.length})</summary><div class="pos-history">${saved.history.map((r,i)=>`<button class="btn" data-history="${i}">${esc(label(r.config.variant))} · ${r.score}/${r.attempts.length} · ${r.config.choiceCount} choices · ${r.config.board.toUpperCase()} · ${formatTime(r.activeMs)}${r.config.variant==='fixed'?` · cycle ${r.cycleNumber}`:''}</button>`).reverse().join('')}</div></details>`:''}
+      <details class="pos-details"><summary>How practice works &amp; sources</summary><p>Fixed cycles pin their corpus, move choices and board setting. Letters change each cycle. Times are active wall-clock time, excluding pauses, hidden tabs and review, not a measurement of pure thinking. Results stay on this device. Repeated passes reuse this finite pool.</p><p>${esc(catalog.limits?.join(' ')||'Teaching sample. No measured puzzle ratings.')}</p><p>Chess positions from Lichess games (CC0). Authored teaching commentary. Engine checks: Stockfish 17.1. Human-model illustrations: Maia3-79M where labeled; engine fallbacks are labeled separately. No engine or model runs in this app.</p></details>
+    </div></div>
+    <div class="action-bar"><div class="action-bar__inner"><button class="btn btn--primary btn--lg btn--block" data-start ${error?'disabled':''}>${icon('i-bolt')} Start</button></div></div>`;
   const sync=()=>{
-    const v=root.querySelector('[name=variant]').value,rush=['timed','survival'].includes(v);
+    const v=value('variant'),rush=['timed','survival'].includes(v);
+    for(const input of root.querySelectorAll('[name=variant]'))input.closest('.mode-card').classList.toggle('is-selected',input.checked);
     root.querySelector('[data-choice-label]').hidden=rush;
     root.querySelector('[data-theme-label]').hidden=rush;
     root.querySelector('[data-size-label]').hidden=v!=='fixed';
@@ -51,7 +57,7 @@ export function createSetup(root,{persistence,go,board='2d',confirm,notify}) {
         try{const updated=E.endSavedRun(saved),next=JSON.stringify(updated);if(!persistence.compareAndSet(savedRaw,next))throw new Error('Saved progress changed or storage is full. Reopen Modes before starting.');saved=updated;savedRaw=next;}catch(e){notify?.(e.message,{kind:'error'});return;}
       }
       const p=new URLSearchParams({mode:'positional'});
-      for(const k of ['variant','choices','theme','size','board'])p.set(k,root.querySelector(`[name=${k}]`).value);
+      for(const k of ['variant','choices','theme','size','board'])p.set(k,value(k));
       if(['timed','survival'].includes(p.get('variant')))p.set('choices','2');
       go(`#/play?${p}`);
     }
@@ -107,25 +113,32 @@ export function createMode(ctx) {
   function render(){
     if(stopped)return;
     const complete=run.status==='complete',item=run.deck[run.index],p=!complete&&data.cases.find(p=>p.id===item.id);
-    root.innerHTML=`<header class="app-bar"><div class="app-bar__title" data-shell="header">Positional</div></header>
-      <div class="pos-content u-scroll"><div class="pos-top"><strong>${esc(label(run.config.variant))}</strong><span>${run.config.choiceCount} choices${run.config.theme!=='all'?` · ${esc([...(data.practiceThemes||[]),...(data.themes||[])].find(t=>t.id===run.config.theme)?.label||run.config.theme)}`:''}${run.config.variant==='fixed'?` · cycle ${run.cycleNumber}`:''}</span></div>
-      <div class="pos-status" aria-live="polite">${run.score}/${run.attempts.length} correct${['timed','survival'].includes(run.config.variant)?` · ${3-run.mistakes} lives`:''} <span data-clock>${run.config.variant==='timed'?formatTime(E.remaining(run)):formatTime(E.checkpoint(run).activeMs)}</span></div>
-      ${complete?'':`<p class="pos-prompt">${p.sideToMove==='black'?'Black':'White'} to move · choose the inferior move${run.config.variant==='fixed'?` · ${run.index+1}/${run.deck.length}`:''}</p>`}
-      <div class="pos-board"></div><section class="pos-controls"></section>
-      ${storageError?`<p role="alert">${esc(storageError)} Keep this tab open to review the in-memory result.</p>`:''}
-      </div>`;
-    root.querySelector('.pos-board').appendChild(boardEl);
+    const rush=['timed','survival'].includes(run.config.variant);
+    const modeText=`${label(run.config.variant)} · ${run.config.choiceCount} choices${run.config.variant==='fixed'?` · cycle ${run.cycleNumber}`:''}`;
+    const header=`<header class="app-bar"><div class="readouts pos-readouts" data-shell="header" aria-label="Positional progress">
+      <div class="readout readout--score"><span class="readout__label">Correct</span><span class="readout__value">${run.score}/${run.attempts.length}</span></div>
+      ${rush?`<div class="readout"><span class="readout__label">Lives</span><span class="strikes" aria-label="${3-run.mistakes} lives remaining">${[0,1,2].map(i=>`<i class="strikes__pip ${i<run.mistakes?'is-spent':''}" aria-hidden="true"></i>`).join('')}</span></div>`:''}
+      <div class="readout readout--timer"><span class="readout__label">${run.config.variant==='timed'?'Time':'Elapsed'}</span><span class="readout__value" data-clock>${run.config.variant==='timed'?formatTime(E.remaining(run)):formatTime(E.checkpoint(run).activeMs)}</span></div>
+      </div></header>`;
+    root.classList.toggle('screen--play',!complete);
+    root.classList.toggle('screen--positional-review',complete);
+    root.innerHTML=header+(complete?`<div class="pos-content u-scroll"><div class="pos-top"><strong>${esc(modeText)}</strong></div><div class="pos-board"></div><section class="pos-controls"></section>${storageError?`<p role="alert" class="pos-small">${esc(storageError)} Keep this tab open to review the in-memory result.</p>`:''}</div>`:
+      `<div class="stage pos-stage"><div class="pos-prompt"><span class="pos-mode-label">${esc(modeText)}${run.config.theme!=='all'?` · ${esc([...(data.practiceThemes||[]),...(data.themes||[])].find(t=>t.id===run.config.theme)?.label||run.config.theme)}`:''}</span><div class="prompt"><span class="prompt__side" data-side="${p.sideToMove}"></span><span>${p.sideToMove==='black'?'Black':'White'} to move · find the inferior move</span>${run.config.variant==='fixed'?`<strong class="pos-progress">${run.index+1}/${run.deck.length}</strong>`:''}</div></div><div class="board-area pos-board-area"><div class="board-frame pos-board"><div class="board-slot"></div></div></div><div class="pos-pause" hidden></div></div><div class="action-bar pos-action-bar"><div class="action-bar__inner"><section class="pos-controls"></section>${storageError?`<p role="alert" class="pos-small">${esc(storageError)} Keep this tab open to review the in-memory result.</p>`:''}</div></div>`);
+    root.querySelector(complete?'.pos-board':'.board-slot').appendChild(boardEl);
     const controls=root.querySelector('.pos-controls');
     if(complete){renderReview(controls);return;}
     boardAt(p,item.options);
-    root.querySelector('.pos-board').hidden=run.status==='paused'&&run.reason!=='feedback';
+    const paused=run.status==='paused'&&run.reason!=='feedback';
+    root.querySelector('.pos-board-area').hidden=paused;
+    root.querySelector('.pos-pause').hidden=!paused;
     if(run.status==='paused'&&run.reason!=='feedback'){
-      controls.innerHTML=`<p>${run.reason==='ready'?'Ready. The clock starts when you begin.':'Paused. Your progress is saved on this device.'}</p><button class="btn btn--primary" data-action="resume" ${storageError?'disabled':''}>${run.reason==='ready'?'Begin':'Resume'}</button><button class="btn" data-action="end">End and review</button>${run.reason!=='ready'?'<a class="btn" href="#/positional">Save &amp; return to modes</a>':''}`;
+      root.querySelector('.pos-pause').innerHTML=`${icon(run.reason==='ready'?'i-puzzle':'i-timer')}<h2>${run.reason==='ready'?'Ready when you are':'Paused'}</h2><p>${run.reason==='ready'?'The clock starts when you begin.':'Your progress is saved on this device.'}</p>`;
+      controls.innerHTML=`<div class="pos-pause-actions"><button class="btn btn--primary btn--lg btn--block" data-action="resume" ${storageError?'disabled':''}>${run.reason==='ready'?'Begin':'Resume'}</button><button class="btn" data-action="end">End and review</button>${run.reason!=='ready'?'<a class="btn" href="#/positional">Save &amp; return to modes</a>':''}</div>`;
     }else{
-      controls.innerHTML=`<div class="pos-choices" style="--choices:${item.options.length}">${item.options.map((uci,i)=>`<button class="btn pos-choice ${selected===uci?'is-selected':''}" data-choice="${uci}" aria-pressed="${selected===uci}" ${run.status!=='playing'?'disabled':''} style="--choice:${COLORS[i]}"><strong>${LETTERS[i]}</strong><span>${esc(p.options.find(o=>o.uci===uci).san)}</span></button>`).join('')}</div>
-      <button class="btn btn--primary pos-submit" data-action="submit" ${!selected||run.status!=='playing'?'disabled':''}>Submit choice</button>
+      controls.innerHTML=`<div class="pos-choices" style="--choices:${item.options.length}">${item.options.map((uci,i)=>`<button class="answer pos-choice ${selected===uci?'is-selected':''}" data-choice="${uci}" aria-pressed="${selected===uci}" ${run.status!=='playing'?'disabled':''} style="--choice:${COLORS[i]}"><strong>${LETTERS[i]}</strong><span>${esc(p.options.find(o=>o.uci===uci).san)}</span></button>`).join('')}</div>
+      <button class="btn btn--primary btn--block pos-submit" data-action="submit" ${!selected||run.status!=='playing'?'disabled':''}>Submit choice</button>
       <p class="pos-feedback" role="status">${esc(feedback||'Tap a move to preview, then submit.')}</p>
-      <div class="pos-actions"><button class="btn" data-action="pause">Pause &amp; save</button><button class="btn" data-action="end">End and review</button></div>`;
+      <div class="pos-actions pos-play-actions"><button class="btn" data-action="pause">Pause &amp; save</button><button class="btn" data-action="end">End and review</button></div>`;
     }
     requestAnimationFrame(()=>{if(!stopped)board.resize();});
   }
