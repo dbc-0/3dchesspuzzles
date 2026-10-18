@@ -6,11 +6,11 @@ The Positional card sits directly below Blunder Rush in the new `app/` shell.
 - Fixed-cycle study: two or three choices, all positions attemptable, repeatable order, shuffled letters on every cycle.
 - Theme practice: two or three choices, shuffled passes through a finite eligible pool, until the player ends the run. No immediate repeat across passes when the pool has more than one card.
 - Four broad filters are unions of independently approved finer tags. Counts are unique positions, so overlapping categories do not inflate the corpus count. Finer tags and detailed commentary appear in end review.
-- Fixed100 stays disabled until the selected pool actually has 100 unique approved positions. The initial integration has 25, not 100 or 200.
+- Fixed100 stays disabled until the selected pool actually has 100 unique approved positions. The current catalog has 50, not 100 or 200.
 
 ## Content
 
-`data/positional/catalog.js` embeds the exact independently approved 25-card public projection, then adds approved practice metadata. `manifest.json` records the input hashes and the checked binary control for each card. The data test verifies the projection hash, unchanged case values, and the selected controls.
+`data/positional/catalog.js` embeds the exact independently approved 50-card public projection, then adds approved practice metadata. `manifest.json` records the input hashes and the checked binary control for each card. The data test verifies the projection hash, unchanged case values, and the selected controls.
 
 The binary good move is the higher recorded independent 10M-budget Stockfish score among the two approved controls; measured Maia probability and stable UCI break ties. Model probability is not claimed to mean objectively strongest. All supplied moves must be legal and quiet. Source ratings are player ratings, not measured puzzle difficulty. No Glicko rating is invented for these cards.
 
@@ -54,3 +54,6 @@ Only replace the default catalog with an independently approved public projectio
 Positional setup uses the same mode cards and segmented controls as Blunder Rush. Play keeps the board and preview/submit controls in the shared fixed stage/action-bar layout; the score, lives and clock sit in the app bar. Long explanations use a separate scrolling end-review screen. This is a presentation-only update: corpus, scoring, timing, saved-run identity and recovery rules are unchanged.
 
 `node app/test/positional-interface.test.mjs` checks the 2/3-choice render contracts, paused board, separate review layout and all four setup routes. Actual phone-sized cloud browser checks supplement these markup tests; physical iOS/WebGL rendering is not implied.
+
+### Strict50 content increment
+The explicit corpus version `positional-training-strict50-20261018-v1` adds 25 approved positions to the prior 25. Started cycles and prior reviews keep their saved source snapshots; a new run uses 50. The public manifest contains the two-budget observed-best consistency receipts and the four excluded, unpublished candidates. All selected controls pass the same operational margins against the strongest measured reference/selected-control result. Source ratings and provisional hybrid difficulty labels remain in end review.

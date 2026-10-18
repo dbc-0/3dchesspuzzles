@@ -1,10 +1,12 @@
 {
   "schemaVersion": 1,
-  "corpusVersion": "positional-training-strict25-20261018-v1",
-  "uniquePositions": 25,
-  "publicProjectionSha256": "6ad612d42172dbf33f285061fddd32b08c181b2d8dbaeb4fed435af632145f78",
-  "approvedThemeMapSha256": "995b81e81249068f95620b18dbf9295dea54e96b4a22b83c093087ee20475da1",
-  "note": "catalog.js embeds the exact approved source JSON values, then adds independently approved primary/secondary theme metadata. Broad practice filters are unions of those canonical tags. Historical cycles remain pinned.",
+  "corpusVersion": "positional-training-strict50-20261018-v1",
+  "uniquePositions": 50,
+  "publicProjectionSha256": "a45c2167493b1733fac44bca5eab8b687606c4383190495195941af437b8a257",
+  "approvedThemeMapSha256": "4a7c7c3c9d8eb7a973e1765bfa4a96f53f45e23d0328c41c73d6312542520e90",
+  "approvedReleaseManifestSha256": "3fdc80ab5934a4ebbadad64b079a22c05e0a56cec88d027655e6bd155df28c80",
+  "approvedExclusionsSha256": "bd8a270a5e24b7d5c599fcaa84e6c848e513d2a5f8d1b5e6667d9c626be0397a",
+  "note": "catalog.js embeds the exact approved source JSON values, then adds independently approved primary/secondary theme metadata. Broad practice filters are unions of those canonical tags. Historical cycles remain pinned. Reviewer labels are public-facing AI-assisted review descriptions.",
   "binaryControls": [
     {
       "id": "g01330_p029",
@@ -205,6 +207,2343 @@
       "nodeBudget": 10000000,
       "policyProbability": 0.3977702856063843,
       "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g04599_p026",
+      "goodUci": "b8a6",
+      "scoreCpMover": 331,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.15815043449401855,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g02539_p033",
+      "goodUci": "a4b4",
+      "scoreCpMover": 301,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.22399169206619263,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g02343_p033",
+      "goodUci": "f2f4",
+      "scoreCpMover": 312,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.6491159796714783,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g00214_p020",
+      "goodUci": "a7a6",
+      "scoreCpMover": -173,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.29939237236976624,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g00965_p044",
+      "goodUci": "e6e5",
+      "scoreCpMover": 307,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.5280975699424744,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g01536_p031",
+      "goodUci": "e1g1",
+      "scoreCpMover": 404,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.0827346220612526,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g02263_p045",
+      "goodUci": "f1f2",
+      "scoreCpMover": 385,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.7408761382102966,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g00865_p032",
+      "goodUci": "c4f7",
+      "scoreCpMover": -134,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.2875441610813141,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g03956_p041",
+      "goodUci": "f4e3",
+      "scoreCpMover": 75,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.8745355606079102,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g02617_p045",
+      "goodUci": "b1b3",
+      "scoreCpMover": -132,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.09291033446788788,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g00818_p027",
+      "goodUci": "b1d2",
+      "scoreCpMover": 43,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.1022193655371666,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g04229_p042",
+      "goodUci": "e8d8",
+      "scoreCpMover": -147,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.03156500309705734,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g01400_p064",
+      "goodUci": "b8c8",
+      "scoreCpMover": 208,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.08085396140813828,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g00844_p021",
+      "goodUci": "c1f4",
+      "scoreCpMover": 285,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.1686316877603531,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "src02_g06493_p036",
+      "goodUci": "c8d7",
+      "scoreCpMover": 257,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.8070550560951233,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g02062_p022",
+      "goodUci": "d8e7",
+      "scoreCpMover": -70,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.7690138816833496,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g04885_p020",
+      "goodUci": "e8g8",
+      "scoreCpMover": -12,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.9530134201049805,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g03091_p018",
+      "goodUci": "d8e8",
+      "scoreCpMover": 245,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.6652454733848572,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g04842_p047",
+      "goodUci": "c3b4",
+      "scoreCpMover": 341,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.09633937478065491,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g00744_p027",
+      "goodUci": "f2e2",
+      "scoreCpMover": -65,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.054618604481220245,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "src02_g06749_p035",
+      "goodUci": "d2f3",
+      "scoreCpMover": 146,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.6215416193008423,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "src02_g06737_p053",
+      "goodUci": "d2e2",
+      "scoreCpMover": 38,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.4234924018383026,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "src02_g06286_p027",
+      "goodUci": "e2d4",
+      "scoreCpMover": 13,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.5545386075973511,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "src02_g06339_p047",
+      "goodUci": "e1a1",
+      "scoreCpMover": 19,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.36438196897506714,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "src02_g06634_p024",
+      "goodUci": "h8e8",
+      "scoreCpMover": 75,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.663994550704956,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
     }
-  ]
+  ],
+  "observedBestConsistency": [
+    {
+      "id": "g01330_p029",
+      "fullCaseSha256": "db29f2913c733a4cb427e5e579cafa8638d560297b45d8eac12a24e76f5a36e5",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "b3c4": 192,
+            "c2c3": 178
+          },
+          "unrestrictedReferenceCp": 176,
+          "observedBestCp": 192,
+          "actualScoreCpMover": 1,
+          "belowObservedBestCp": {
+            "b3c4": 0,
+            "c2c3": 14
+          },
+          "aboveBadCp": {
+            "b3c4": 191,
+            "c2c3": 177
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "b3c4": 198,
+            "c2c3": 168
+          },
+          "unrestrictedReferenceCp": 183,
+          "observedBestCp": 198,
+          "actualScoreCpMover": -34,
+          "belowObservedBestCp": {
+            "b3c4": 0,
+            "c2c3": 30
+          },
+          "aboveBadCp": {
+            "b3c4": 232,
+            "c2c3": 202
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g01401_p023",
+      "fullCaseSha256": "152cd2454c6aca5b6d3e2e59713998824064842160d69e722f2a3ae520ba892e",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "f2f3": 223,
+            "e1g1": 201
+          },
+          "unrestrictedReferenceCp": 216,
+          "observedBestCp": 223,
+          "actualScoreCpMover": 93,
+          "belowObservedBestCp": {
+            "f2f3": 0,
+            "e1g1": 22
+          },
+          "aboveBadCp": {
+            "f2f3": 130,
+            "e1g1": 108
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "f2f3": 222,
+            "e1g1": 195
+          },
+          "unrestrictedReferenceCp": 220,
+          "observedBestCp": 222,
+          "actualScoreCpMover": 92,
+          "belowObservedBestCp": {
+            "f2f3": 0,
+            "e1g1": 27
+          },
+          "aboveBadCp": {
+            "f2f3": 130,
+            "e1g1": 103
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g00806_p028",
+      "fullCaseSha256": "47649e1202d4c53a04eec3532a8a0a4e179e2df1f938aa4c38a1a738c92c4615",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "g7g6": 0,
+            "d8g8": -32
+          },
+          "unrestrictedReferenceCp": -11,
+          "observedBestCp": 0,
+          "actualScoreCpMover": -105,
+          "belowObservedBestCp": {
+            "g7g6": 0,
+            "d8g8": 32
+          },
+          "aboveBadCp": {
+            "g7g6": 105,
+            "d8g8": 73
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "g7g6": -15,
+            "d8g8": -35
+          },
+          "unrestrictedReferenceCp": -9,
+          "observedBestCp": -9,
+          "actualScoreCpMover": -115,
+          "belowObservedBestCp": {
+            "g7g6": 6,
+            "d8g8": 26
+          },
+          "aboveBadCp": {
+            "g7g6": 100,
+            "d8g8": 80
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g03358_p047",
+      "fullCaseSha256": "3f4325bb31932449a789be5eedc003e7c1d51eac1c63923e4b3fdbf0e880cbaf",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "g2g3": -27,
+            "a1a7": -34
+          },
+          "unrestrictedReferenceCp": -32,
+          "observedBestCp": -27,
+          "actualScoreCpMover": -197,
+          "belowObservedBestCp": {
+            "g2g3": 0,
+            "a1a7": 7
+          },
+          "aboveBadCp": {
+            "g2g3": 170,
+            "a1a7": 163
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "g2g3": -31,
+            "a1a7": -29
+          },
+          "unrestrictedReferenceCp": -31,
+          "observedBestCp": -29,
+          "actualScoreCpMover": -186,
+          "belowObservedBestCp": {
+            "g2g3": 2,
+            "a1a7": 0
+          },
+          "aboveBadCp": {
+            "g2g3": 155,
+            "a1a7": 157
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g01892_p023",
+      "fullCaseSha256": "496ca5bcd17a7fda31ceb88c8c5fc1535a66ee96b838756cb235cbd953ea0ad5",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "c2c3": 341,
+            "d1d2": 314
+          },
+          "unrestrictedReferenceCp": 331,
+          "observedBestCp": 341,
+          "actualScoreCpMover": 211,
+          "belowObservedBestCp": {
+            "c2c3": 0,
+            "d1d2": 27
+          },
+          "aboveBadCp": {
+            "c2c3": 130,
+            "d1d2": 103
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "c2c3": 333,
+            "d1d2": 311
+          },
+          "unrestrictedReferenceCp": 340,
+          "observedBestCp": 340,
+          "actualScoreCpMover": 216,
+          "belowObservedBestCp": {
+            "c2c3": 7,
+            "d1d2": 29
+          },
+          "aboveBadCp": {
+            "c2c3": 117,
+            "d1d2": 95
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g04432_p023",
+      "fullCaseSha256": "7f0024d75e0f57463278639ec24e90ca22be934fdbb411c69a6d858a7dfe3da9",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "e2e4": 187,
+            "d2d4": 214
+          },
+          "unrestrictedReferenceCp": 218,
+          "observedBestCp": 218,
+          "actualScoreCpMover": 45,
+          "belowObservedBestCp": {
+            "e2e4": 31,
+            "d2d4": 4
+          },
+          "aboveBadCp": {
+            "e2e4": 142,
+            "d2d4": 169
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "e2e4": 198,
+            "d2d4": 227
+          },
+          "unrestrictedReferenceCp": 223,
+          "observedBestCp": 227,
+          "actualScoreCpMover": 46,
+          "belowObservedBestCp": {
+            "e2e4": 29,
+            "d2d4": 0
+          },
+          "aboveBadCp": {
+            "e2e4": 152,
+            "d2d4": 181
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g03680_p025",
+      "fullCaseSha256": "c304837bd1f99514f1b341bbf62162fd394642182c2824a6cdd88840fb9ed9a4",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "f1e1": 304,
+            "d1d3": 299
+          },
+          "unrestrictedReferenceCp": 304,
+          "observedBestCp": 304,
+          "actualScoreCpMover": 199,
+          "belowObservedBestCp": {
+            "f1e1": 0,
+            "d1d3": 5
+          },
+          "aboveBadCp": {
+            "f1e1": 105,
+            "d1d3": 100
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "f1e1": 317,
+            "d1d3": 297
+          },
+          "unrestrictedReferenceCp": 298,
+          "observedBestCp": 317,
+          "actualScoreCpMover": 203,
+          "belowObservedBestCp": {
+            "f1e1": 0,
+            "d1d3": 20
+          },
+          "aboveBadCp": {
+            "f1e1": 114,
+            "d1d3": 94
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g04576_p027",
+      "fullCaseSha256": "9dcdcbe5191963b5eaaec618521e891d465e9a9e99310b12a23f09155ce952cd",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "c2c3": -133,
+            "f2f4": -117
+          },
+          "unrestrictedReferenceCp": -125,
+          "observedBestCp": -117,
+          "actualScoreCpMover": -211,
+          "belowObservedBestCp": {
+            "c2c3": 16,
+            "f2f4": 0
+          },
+          "aboveBadCp": {
+            "c2c3": 78,
+            "f2f4": 94
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "c2c3": -141,
+            "f2f4": -120
+          },
+          "unrestrictedReferenceCp": -118,
+          "observedBestCp": -118,
+          "actualScoreCpMover": -208,
+          "belowObservedBestCp": {
+            "c2c3": 23,
+            "f2f4": 2
+          },
+          "aboveBadCp": {
+            "c2c3": 67,
+            "f2f4": 88
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g01423_p030",
+      "fullCaseSha256": "bd405979b289d7df06abe1c89d772936c7cea58803ec90dc36ef1a1f9bc7d4d0",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "e8g8": 349,
+            "c8f5": 335
+          },
+          "unrestrictedReferenceCp": 337,
+          "observedBestCp": 349,
+          "actualScoreCpMover": 253,
+          "belowObservedBestCp": {
+            "e8g8": 0,
+            "c8f5": 14
+          },
+          "aboveBadCp": {
+            "e8g8": 96,
+            "c8f5": 82
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "e8g8": 341,
+            "c8f5": 339
+          },
+          "unrestrictedReferenceCp": 357,
+          "observedBestCp": 357,
+          "actualScoreCpMover": 262,
+          "belowObservedBestCp": {
+            "e8g8": 16,
+            "c8f5": 18
+          },
+          "aboveBadCp": {
+            "e8g8": 79,
+            "c8f5": 77
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g01344_p046",
+      "fullCaseSha256": "af0a88c8615cd7c09cd4b0ad4c1a95ef3ce8458723210ba36879d0a5ddcc2eab",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "g8d8": -13,
+            "c8d8": -31
+          },
+          "unrestrictedReferenceCp": 0,
+          "observedBestCp": 0,
+          "actualScoreCpMover": -107,
+          "belowObservedBestCp": {
+            "g8d8": 13,
+            "c8d8": 31
+          },
+          "aboveBadCp": {
+            "g8d8": 94,
+            "c8d8": 76
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "g8d8": -8,
+            "c8d8": -8
+          },
+          "unrestrictedReferenceCp": -3,
+          "observedBestCp": -3,
+          "actualScoreCpMover": -127,
+          "belowObservedBestCp": {
+            "g8d8": 5,
+            "c8d8": 5
+          },
+          "aboveBadCp": {
+            "g8d8": 119,
+            "c8d8": 119
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g03717_p061",
+      "fullCaseSha256": "2600b11c8b0d4e4f2d0b1f8ff3773f2455630623f0c8bb1b5bb889b719daf0f4",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "d2f3": 264,
+            "a1d1": 255
+          },
+          "unrestrictedReferenceCp": 252,
+          "observedBestCp": 264,
+          "actualScoreCpMover": -26,
+          "belowObservedBestCp": {
+            "d2f3": 0,
+            "a1d1": 9
+          },
+          "aboveBadCp": {
+            "d2f3": 290,
+            "a1d1": 281
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "d2f3": 244,
+            "a1d1": 255
+          },
+          "unrestrictedReferenceCp": 278,
+          "observedBestCp": 278,
+          "actualScoreCpMover": -19,
+          "belowObservedBestCp": {
+            "d2f3": 34,
+            "a1d1": 23
+          },
+          "aboveBadCp": {
+            "d2f3": 263,
+            "a1d1": 274
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "low_g00143_p020",
+      "fullCaseSha256": "b02bb9627aad7c5d7cf83c8a4855ecb14d55aaeb958be1232c01266d745a8863",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "d7d6": -6,
+            "b7b6": -13
+          },
+          "unrestrictedReferenceCp": -10,
+          "observedBestCp": -6,
+          "actualScoreCpMover": -113,
+          "belowObservedBestCp": {
+            "d7d6": 0,
+            "b7b6": 7
+          },
+          "aboveBadCp": {
+            "d7d6": 107,
+            "b7b6": 100
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "d7d6": -6,
+            "b7b6": 0
+          },
+          "unrestrictedReferenceCp": -3,
+          "observedBestCp": 0,
+          "actualScoreCpMover": -79,
+          "belowObservedBestCp": {
+            "d7d6": 6,
+            "b7b6": 0
+          },
+          "aboveBadCp": {
+            "d7d6": 73,
+            "b7b6": 79
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g00672_p018",
+      "fullCaseSha256": "b9d019a257f3d03b1b948dbbdd307ee2d41d725ffce9b660faa55acc9bdbea2d",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "f8e7": -82,
+            "c8e6": -101
+          },
+          "unrestrictedReferenceCp": -77,
+          "observedBestCp": -77,
+          "actualScoreCpMover": -284,
+          "belowObservedBestCp": {
+            "f8e7": 5,
+            "c8e6": 24
+          },
+          "aboveBadCp": {
+            "f8e7": 202,
+            "c8e6": 183
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "f8e7": -83,
+            "c8e6": -104
+          },
+          "unrestrictedReferenceCp": -79,
+          "observedBestCp": -79,
+          "actualScoreCpMover": -301,
+          "belowObservedBestCp": {
+            "f8e7": 4,
+            "c8e6": 25
+          },
+          "aboveBadCp": {
+            "f8e7": 218,
+            "c8e6": 197
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g03476_p021",
+      "fullCaseSha256": "45fe4a5c97a2178dbabd5a071415213aeb7fd07859750ed4514b05c0f90d2c36",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "f1c4": 316,
+            "g1e2": 318
+          },
+          "unrestrictedReferenceCp": 305,
+          "observedBestCp": 318,
+          "actualScoreCpMover": 200,
+          "belowObservedBestCp": {
+            "f1c4": 2,
+            "g1e2": 0
+          },
+          "aboveBadCp": {
+            "f1c4": 116,
+            "g1e2": 118
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "f1c4": 318,
+            "g1e2": 312
+          },
+          "unrestrictedReferenceCp": 317,
+          "observedBestCp": 318,
+          "actualScoreCpMover": 218,
+          "belowObservedBestCp": {
+            "f1c4": 0,
+            "g1e2": 6
+          },
+          "aboveBadCp": {
+            "f1c4": 100,
+            "g1e2": 94
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g00112_p018",
+      "fullCaseSha256": "75d8a9a240ad23e72b4cf882f605e47bd930977ad18f085686a5a63862195b30",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "c8e6": -32,
+            "c7c6": -53
+          },
+          "unrestrictedReferenceCp": -40,
+          "observedBestCp": -32,
+          "actualScoreCpMover": -132,
+          "belowObservedBestCp": {
+            "c8e6": 0,
+            "c7c6": 21
+          },
+          "aboveBadCp": {
+            "c8e6": 100,
+            "c7c6": 79
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "c8e6": -43,
+            "c7c6": -41
+          },
+          "unrestrictedReferenceCp": -42,
+          "observedBestCp": -41,
+          "actualScoreCpMover": -117,
+          "belowObservedBestCp": {
+            "c8e6": 2,
+            "c7c6": 0
+          },
+          "aboveBadCp": {
+            "c8e6": 74,
+            "c7c6": 76
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g02061_p027",
+      "fullCaseSha256": "b0f9d09d3edbb49d46a09a7c42461b73096c51b7b73e64eb7c3224a114a83683",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "e2f3": 305,
+            "b2b3": 314
+          },
+          "unrestrictedReferenceCp": 310,
+          "observedBestCp": 314,
+          "actualScoreCpMover": 231,
+          "belowObservedBestCp": {
+            "e2f3": 9,
+            "b2b3": 0
+          },
+          "aboveBadCp": {
+            "e2f3": 74,
+            "b2b3": 83
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "e2f3": 312,
+            "b2b3": 305
+          },
+          "unrestrictedReferenceCp": 310,
+          "observedBestCp": 312,
+          "actualScoreCpMover": 238,
+          "belowObservedBestCp": {
+            "e2f3": 0,
+            "b2b3": 7
+          },
+          "aboveBadCp": {
+            "e2f3": 74,
+            "b2b3": 67
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g01731_p051",
+      "fullCaseSha256": "656148fc9c9ac5dabaa8cbe3a8438c472cddaaeb3a99083af1ec0ac2c115aa48",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "b2b4": 322,
+            "e3e4": 318
+          },
+          "unrestrictedReferenceCp": 321,
+          "observedBestCp": 322,
+          "actualScoreCpMover": 182,
+          "belowObservedBestCp": {
+            "b2b4": 0,
+            "e3e4": 4
+          },
+          "aboveBadCp": {
+            "b2b4": 140,
+            "e3e4": 136
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "b2b4": 319,
+            "e3e4": 327
+          },
+          "unrestrictedReferenceCp": 328,
+          "observedBestCp": 328,
+          "actualScoreCpMover": 200,
+          "belowObservedBestCp": {
+            "b2b4": 9,
+            "e3e4": 1
+          },
+          "aboveBadCp": {
+            "b2b4": 119,
+            "e3e4": 127
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g04297_p023",
+      "fullCaseSha256": "c6242e65e63beedc1a9f030e078d3f2a045d94fac797d30096be10a5b8a74cf9",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "b1d2": 29,
+            "e2d3": 27
+          },
+          "unrestrictedReferenceCp": 39,
+          "observedBestCp": 39,
+          "actualScoreCpMover": -42,
+          "belowObservedBestCp": {
+            "b1d2": 10,
+            "e2d3": 12
+          },
+          "aboveBadCp": {
+            "b1d2": 71,
+            "e2d3": 69
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "b1d2": 26,
+            "e2d3": 26
+          },
+          "unrestrictedReferenceCp": 35,
+          "observedBestCp": 35,
+          "actualScoreCpMover": -36,
+          "belowObservedBestCp": {
+            "b1d2": 9,
+            "e2d3": 9
+          },
+          "aboveBadCp": {
+            "b1d2": 62,
+            "e2d3": 62
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g01596_p030",
+      "fullCaseSha256": "1dbc9af6733bf1b69f889f51ca59afc9c75e5f7c0690046f6d9fbba09c4f126b",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "c7c5": 328,
+            "f7f5": 300
+          },
+          "unrestrictedReferenceCp": 326,
+          "observedBestCp": 328,
+          "actualScoreCpMover": 146,
+          "belowObservedBestCp": {
+            "c7c5": 0,
+            "f7f5": 28
+          },
+          "aboveBadCp": {
+            "c7c5": 182,
+            "f7f5": 154
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "c7c5": 318,
+            "f7f5": 307
+          },
+          "unrestrictedReferenceCp": 316,
+          "observedBestCp": 318,
+          "actualScoreCpMover": 168,
+          "belowObservedBestCp": {
+            "c7c5": 0,
+            "f7f5": 11
+          },
+          "aboveBadCp": {
+            "c7c5": 150,
+            "f7f5": 139
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g02543_p043",
+      "fullCaseSha256": "2c744ca8038b5eedccd7ce5b36ba7f20a31a8d6a2f63e9265f64a0580efbeb69",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "d5d6": 456,
+            "f1e1": 445
+          },
+          "unrestrictedReferenceCp": 435,
+          "observedBestCp": 456,
+          "actualScoreCpMover": 257,
+          "belowObservedBestCp": {
+            "d5d6": 0,
+            "f1e1": 11
+          },
+          "aboveBadCp": {
+            "d5d6": 199,
+            "f1e1": 188
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "d5d6": 451,
+            "f1e1": 471
+          },
+          "unrestrictedReferenceCp": 475,
+          "observedBestCp": 475,
+          "actualScoreCpMover": 297,
+          "belowObservedBestCp": {
+            "d5d6": 24,
+            "f1e1": 4
+          },
+          "aboveBadCp": {
+            "d5d6": 154,
+            "f1e1": 174
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g03989_p023",
+      "fullCaseSha256": "385f4aad93730e362491f9789445b0e6151a6fef1260c2c513ad3c4a0e42d3be",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "h3h4": -179,
+            "c2c3": -165
+          },
+          "unrestrictedReferenceCp": -188,
+          "observedBestCp": -165,
+          "actualScoreCpMover": -256,
+          "belowObservedBestCp": {
+            "h3h4": 14,
+            "c2c3": 0
+          },
+          "aboveBadCp": {
+            "h3h4": 77,
+            "c2c3": 91
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "h3h4": -180,
+            "c2c3": -169
+          },
+          "unrestrictedReferenceCp": -174,
+          "observedBestCp": -169,
+          "actualScoreCpMover": -270,
+          "belowObservedBestCp": {
+            "h3h4": 11,
+            "c2c3": 0
+          },
+          "aboveBadCp": {
+            "h3h4": 90,
+            "c2c3": 101
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g04232_p022",
+      "fullCaseSha256": "9ad8f7c68a68a36266ffb7cb7c817f9ee1d11685b764bd84b6eee765d5a70850",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "g7g5": -149,
+            "h7h5": -131
+          },
+          "unrestrictedReferenceCp": -125,
+          "observedBestCp": -125,
+          "actualScoreCpMover": -270,
+          "belowObservedBestCp": {
+            "g7g5": 24,
+            "h7h5": 6
+          },
+          "aboveBadCp": {
+            "g7g5": 121,
+            "h7h5": 139
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "g7g5": -138,
+            "h7h5": -139
+          },
+          "unrestrictedReferenceCp": -141,
+          "observedBestCp": -138,
+          "actualScoreCpMover": -274,
+          "belowObservedBestCp": {
+            "g7g5": 0,
+            "h7h5": 1
+          },
+          "aboveBadCp": {
+            "g7g5": 136,
+            "h7h5": 135
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g01832_p023",
+      "fullCaseSha256": "7cfd81ae3b7d98462fcb9e8f0b6f2c327da23f1b05d6ce52f432115988498758",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "d3d4": 249,
+            "c5d6": 242
+          },
+          "unrestrictedReferenceCp": 255,
+          "observedBestCp": 255,
+          "actualScoreCpMover": -19,
+          "belowObservedBestCp": {
+            "d3d4": 6,
+            "c5d6": 13
+          },
+          "aboveBadCp": {
+            "d3d4": 268,
+            "c5d6": 261
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "d3d4": 267,
+            "c5d6": 251
+          },
+          "unrestrictedReferenceCp": 243,
+          "observedBestCp": 267,
+          "actualScoreCpMover": -20,
+          "belowObservedBestCp": {
+            "d3d4": 0,
+            "c5d6": 16
+          },
+          "aboveBadCp": {
+            "d3d4": 287,
+            "c5d6": 271
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g02124_p028",
+      "fullCaseSha256": "8a05d036141e0f0423e28c56166599051979e5ec49a9d9ae5c389132b2798d42",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "d7e7": -182,
+            "c8b8": -178
+          },
+          "unrestrictedReferenceCp": -194,
+          "observedBestCp": -178,
+          "actualScoreCpMover": -271,
+          "belowObservedBestCp": {
+            "d7e7": 4,
+            "c8b8": 0
+          },
+          "aboveBadCp": {
+            "d7e7": 89,
+            "c8b8": 93
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "d7e7": -168,
+            "c8b8": -185
+          },
+          "unrestrictedReferenceCp": -180,
+          "observedBestCp": -168,
+          "actualScoreCpMover": -292,
+          "belowObservedBestCp": {
+            "d7e7": 0,
+            "c8b8": 17
+          },
+          "aboveBadCp": {
+            "d7e7": 124,
+            "c8b8": 107
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g04425_p030",
+      "fullCaseSha256": "309a13f377ed74bd87aceefc920904ba0fb08c7c71b9586be50dd38bea888879",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "f5d3": 369,
+            "a5a6": 337
+          },
+          "unrestrictedReferenceCp": 347,
+          "observedBestCp": 369,
+          "actualScoreCpMover": 237,
+          "belowObservedBestCp": {
+            "f5d3": 0,
+            "a5a6": 32
+          },
+          "aboveBadCp": {
+            "f5d3": 132,
+            "a5a6": 100
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "f5d3": 376,
+            "a5a6": 355
+          },
+          "unrestrictedReferenceCp": 345,
+          "observedBestCp": 376,
+          "actualScoreCpMover": 236,
+          "belowObservedBestCp": {
+            "f5d3": 0,
+            "a5a6": 21
+          },
+          "aboveBadCp": {
+            "f5d3": 140,
+            "a5a6": 119
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g04599_p026",
+      "fullCaseSha256": "d8564342b4a6f25f40fdc3539ab74b5940c7eb5ea5dbe9487b69b08233fcc9e8",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "e8g8": 322,
+            "b8a6": 303
+          },
+          "unrestrictedReferenceCp": 324,
+          "observedBestCp": 324,
+          "actualScoreCpMover": 214,
+          "belowObservedBestCp": {
+            "e8g8": 2,
+            "b8a6": 21
+          },
+          "aboveBadCp": {
+            "e8g8": 108,
+            "b8a6": 89
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "e8g8": 309,
+            "b8a6": 331
+          },
+          "unrestrictedReferenceCp": 337,
+          "observedBestCp": 337,
+          "actualScoreCpMover": 216,
+          "belowObservedBestCp": {
+            "e8g8": 28,
+            "b8a6": 6
+          },
+          "aboveBadCp": {
+            "e8g8": 93,
+            "b8a6": 115
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g02539_p033",
+      "fullCaseSha256": "e155907cbaef6addd31f7a5b9d518497106b8836e8d17c6e4343df813e9470c8",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "a4b3": 281,
+            "a4b4": 301
+          },
+          "unrestrictedReferenceCp": 291,
+          "observedBestCp": 301,
+          "actualScoreCpMover": 183,
+          "belowObservedBestCp": {
+            "a4b3": 20,
+            "a4b4": 0
+          },
+          "aboveBadCp": {
+            "a4b3": 98,
+            "a4b4": 118
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "a4b3": 286,
+            "a4b4": 301
+          },
+          "unrestrictedReferenceCp": 280,
+          "observedBestCp": 301,
+          "actualScoreCpMover": 199,
+          "belowObservedBestCp": {
+            "a4b3": 15,
+            "a4b4": 0
+          },
+          "aboveBadCp": {
+            "a4b3": 87,
+            "a4b4": 102
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g02343_p033",
+      "fullCaseSha256": "87eae70ae48ce70b165c041f7c602a48f83fa714e215ce2ac2d747cdf1da8277",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "f2f4": 316,
+            "h1g1": 306
+          },
+          "unrestrictedReferenceCp": 308,
+          "observedBestCp": 316,
+          "actualScoreCpMover": 186,
+          "belowObservedBestCp": {
+            "f2f4": 0,
+            "h1g1": 10
+          },
+          "aboveBadCp": {
+            "f2f4": 130,
+            "h1g1": 120
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "f2f4": 312,
+            "h1g1": 297
+          },
+          "unrestrictedReferenceCp": 305,
+          "observedBestCp": 312,
+          "actualScoreCpMover": 208,
+          "belowObservedBestCp": {
+            "f2f4": 0,
+            "h1g1": 15
+          },
+          "aboveBadCp": {
+            "f2f4": 104,
+            "h1g1": 89
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g00214_p020",
+      "fullCaseSha256": "64ac39d466f17ca6cde945c5d0be49fa1af838abe3dbdf7c7b4dd80b9cc483b2",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "a7a6": -167,
+            "b8a6": -176
+          },
+          "unrestrictedReferenceCp": -181,
+          "observedBestCp": -167,
+          "actualScoreCpMover": -344,
+          "belowObservedBestCp": {
+            "a7a6": 0,
+            "b8a6": 9
+          },
+          "aboveBadCp": {
+            "a7a6": 177,
+            "b8a6": 168
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "a7a6": -173,
+            "b8a6": -184
+          },
+          "unrestrictedReferenceCp": -174,
+          "observedBestCp": -173,
+          "actualScoreCpMover": -350,
+          "belowObservedBestCp": {
+            "a7a6": 0,
+            "b8a6": 11
+          },
+          "aboveBadCp": {
+            "a7a6": 177,
+            "b8a6": 166
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g00965_p044",
+      "fullCaseSha256": "49f51e4bbad9a8142c3846589d1b9a3b10303e8836d75fe444651bfd5a135465",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "e6e5": 296,
+            "c8d7": 256
+          },
+          "unrestrictedReferenceCp": 288,
+          "observedBestCp": 296,
+          "actualScoreCpMover": 183,
+          "belowObservedBestCp": {
+            "e6e5": 0,
+            "c8d7": 40
+          },
+          "aboveBadCp": {
+            "e6e5": 113,
+            "c8d7": 73
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "e6e5": 307,
+            "c8d7": 278
+          },
+          "unrestrictedReferenceCp": 308,
+          "observedBestCp": 308,
+          "actualScoreCpMover": 185,
+          "belowObservedBestCp": {
+            "e6e5": 1,
+            "c8d7": 30
+          },
+          "aboveBadCp": {
+            "e6e5": 122,
+            "c8d7": 93
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g01536_p031",
+      "fullCaseSha256": "9537bb4cefa7116e73610660a64d4675bcfce6c063d65e4b621b617fdb869114",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "e1g1": 393,
+            "f2f3": 383
+          },
+          "unrestrictedReferenceCp": 401,
+          "observedBestCp": 401,
+          "actualScoreCpMover": 256,
+          "belowObservedBestCp": {
+            "e1g1": 8,
+            "f2f3": 18
+          },
+          "aboveBadCp": {
+            "e1g1": 137,
+            "f2f3": 127
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "e1g1": 404,
+            "f2f3": 382
+          },
+          "unrestrictedReferenceCp": 398,
+          "observedBestCp": 404,
+          "actualScoreCpMover": 266,
+          "belowObservedBestCp": {
+            "e1g1": 0,
+            "f2f3": 22
+          },
+          "aboveBadCp": {
+            "e1g1": 138,
+            "f2f3": 116
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g02263_p045",
+      "fullCaseSha256": "a4f596cdc9aee1ee1294e03e6f1bc98dd12e79771ca1816da0d976a52ab07507",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "f1f2": 368,
+            "c1a1": 357
+          },
+          "unrestrictedReferenceCp": 364,
+          "observedBestCp": 368,
+          "actualScoreCpMover": 289,
+          "belowObservedBestCp": {
+            "f1f2": 0,
+            "c1a1": 11
+          },
+          "aboveBadCp": {
+            "f1f2": 79,
+            "c1a1": 68
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "f1f2": 385,
+            "c1a1": 369
+          },
+          "unrestrictedReferenceCp": 379,
+          "observedBestCp": 385,
+          "actualScoreCpMover": 299,
+          "belowObservedBestCp": {
+            "f1f2": 0,
+            "c1a1": 16
+          },
+          "aboveBadCp": {
+            "f1f2": 86,
+            "c1a1": 70
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g00865_p032",
+      "fullCaseSha256": "a4ee94ff4908d391fc896c572d0ce316eaa86feec41fbc2f7623a3817813ff7f",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "c4f7": -133,
+            "c4e6": -149
+          },
+          "unrestrictedReferenceCp": -147,
+          "observedBestCp": -133,
+          "actualScoreCpMover": -358,
+          "belowObservedBestCp": {
+            "c4f7": 0,
+            "c4e6": 16
+          },
+          "aboveBadCp": {
+            "c4f7": 225,
+            "c4e6": 209
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "c4f7": -134,
+            "c4e6": -146
+          },
+          "unrestrictedReferenceCp": -137,
+          "observedBestCp": -134,
+          "actualScoreCpMover": -354,
+          "belowObservedBestCp": {
+            "c4f7": 0,
+            "c4e6": 12
+          },
+          "aboveBadCp": {
+            "c4f7": 220,
+            "c4e6": 208
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g03956_p041",
+      "fullCaseSha256": "af9669165c79bfae53674646a9935d418afdeb85fc05490bd746ee43821028c5",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "f4e3": 73,
+            "a4a5": 52
+          },
+          "unrestrictedReferenceCp": 71,
+          "observedBestCp": 73,
+          "actualScoreCpMover": -80,
+          "belowObservedBestCp": {
+            "f4e3": 0,
+            "a4a5": 21
+          },
+          "aboveBadCp": {
+            "f4e3": 153,
+            "a4a5": 132
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "f4e3": 75,
+            "a4a5": 51
+          },
+          "unrestrictedReferenceCp": 79,
+          "observedBestCp": 79,
+          "actualScoreCpMover": -54,
+          "belowObservedBestCp": {
+            "f4e3": 4,
+            "a4a5": 28
+          },
+          "aboveBadCp": {
+            "f4e3": 129,
+            "a4a5": 105
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g02617_p045",
+      "fullCaseSha256": "bddf67ff34748a7b882a740d2b43e60c77d7e26156fd98bb3891c09ef8bbf936",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "f1f3": -138,
+            "b1b3": -140
+          },
+          "unrestrictedReferenceCp": -147,
+          "observedBestCp": -138,
+          "actualScoreCpMover": -208,
+          "belowObservedBestCp": {
+            "f1f3": 0,
+            "b1b3": 2
+          },
+          "aboveBadCp": {
+            "f1f3": 70,
+            "b1b3": 68
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "f1f3": -134,
+            "b1b3": -132
+          },
+          "unrestrictedReferenceCp": -148,
+          "observedBestCp": -132,
+          "actualScoreCpMover": -228,
+          "belowObservedBestCp": {
+            "f1f3": 2,
+            "b1b3": 0
+          },
+          "aboveBadCp": {
+            "f1f3": 94,
+            "b1b3": 96
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g00818_p027",
+      "fullCaseSha256": "1187f8ed0353729abc7231d40b3bc2cdfa8327e1abe3737304adc2566db10aa6",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "b1d2": 40,
+            "g1h1": 36
+          },
+          "unrestrictedReferenceCp": 37,
+          "observedBestCp": 40,
+          "actualScoreCpMover": -72,
+          "belowObservedBestCp": {
+            "b1d2": 0,
+            "g1h1": 4
+          },
+          "aboveBadCp": {
+            "b1d2": 112,
+            "g1h1": 108
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "b1d2": 43,
+            "g1h1": 33
+          },
+          "unrestrictedReferenceCp": 23,
+          "observedBestCp": 43,
+          "actualScoreCpMover": -73,
+          "belowObservedBestCp": {
+            "b1d2": 0,
+            "g1h1": 10
+          },
+          "aboveBadCp": {
+            "b1d2": 116,
+            "g1h1": 106
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g04229_p042",
+      "fullCaseSha256": "2caf664564410819f51de4f66d07e537db9e0c41b0f436e67df671ce2197b690",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "e8f8": -166,
+            "e8d8": -151
+          },
+          "unrestrictedReferenceCp": -151,
+          "observedBestCp": -151,
+          "actualScoreCpMover": -309,
+          "belowObservedBestCp": {
+            "e8f8": 15,
+            "e8d8": 0
+          },
+          "aboveBadCp": {
+            "e8f8": 143,
+            "e8d8": 158
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "e8f8": -160,
+            "e8d8": -147
+          },
+          "unrestrictedReferenceCp": -138,
+          "observedBestCp": -138,
+          "actualScoreCpMover": -375,
+          "belowObservedBestCp": {
+            "e8f8": 22,
+            "e8d8": 9
+          },
+          "aboveBadCp": {
+            "e8f8": 215,
+            "e8d8": 228
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g01400_p064",
+      "fullCaseSha256": "3258ec883fca2bf1b3b4ca750331dae2b8c04324814132b16068d06beed1841b",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "f8e8": 208,
+            "b8c8": 208
+          },
+          "unrestrictedReferenceCp": 209,
+          "observedBestCp": 209,
+          "actualScoreCpMover": 72,
+          "belowObservedBestCp": {
+            "f8e8": 1,
+            "b8c8": 1
+          },
+          "aboveBadCp": {
+            "f8e8": 136,
+            "b8c8": 136
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "f8e8": 197,
+            "b8c8": 208
+          },
+          "unrestrictedReferenceCp": 228,
+          "observedBestCp": 228,
+          "actualScoreCpMover": 55,
+          "belowObservedBestCp": {
+            "f8e8": 31,
+            "b8c8": 20
+          },
+          "aboveBadCp": {
+            "f8e8": 142,
+            "b8c8": 153
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g00844_p021",
+      "fullCaseSha256": "1c6ac897988b0e3f6b8a48d5edbe1ebe8855c442f0bc9596ca4fa1d83e57c81c",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "c4c5": 266,
+            "c1f4": 274
+          },
+          "unrestrictedReferenceCp": 284,
+          "observedBestCp": 284,
+          "actualScoreCpMover": -5,
+          "belowObservedBestCp": {
+            "c4c5": 18,
+            "c1f4": 10
+          },
+          "aboveBadCp": {
+            "c4c5": 271,
+            "c1f4": 279
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "c4c5": 279,
+            "c1f4": 285
+          },
+          "unrestrictedReferenceCp": 278,
+          "observedBestCp": 285,
+          "actualScoreCpMover": -17,
+          "belowObservedBestCp": {
+            "c4c5": 6,
+            "c1f4": 0
+          },
+          "aboveBadCp": {
+            "c4c5": 296,
+            "c1f4": 302
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "src02_g06493_p036",
+      "fullCaseSha256": "b6b3560a3731e6550b20392b554581604db8c7b441f6142bac57262067b55dcf",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "c8d7": 258,
+            "g7d4": 239
+          },
+          "unrestrictedReferenceCp": 255,
+          "observedBestCp": 258,
+          "actualScoreCpMover": 165,
+          "belowObservedBestCp": {
+            "c8d7": 0,
+            "g7d4": 19
+          },
+          "aboveBadCp": {
+            "c8d7": 93,
+            "g7d4": 74
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "c8d7": 257,
+            "g7d4": 235
+          },
+          "unrestrictedReferenceCp": 253,
+          "observedBestCp": 257,
+          "actualScoreCpMover": 159,
+          "belowObservedBestCp": {
+            "c8d7": 0,
+            "g7d4": 22
+          },
+          "aboveBadCp": {
+            "c8d7": 98,
+            "g7d4": 76
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g02062_p022",
+      "fullCaseSha256": "4fd8d58e7c2d74a67c58c0af135aedfb715f1345e728b85eabcaa364ebcce4b4",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "d8e7": -56,
+            "f8e8": -94
+          },
+          "unrestrictedReferenceCp": -66,
+          "observedBestCp": -56,
+          "actualScoreCpMover": -207,
+          "belowObservedBestCp": {
+            "d8e7": 0,
+            "f8e8": 38
+          },
+          "aboveBadCp": {
+            "d8e7": 151,
+            "f8e8": 113
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "d8e7": -70,
+            "f8e8": -86
+          },
+          "unrestrictedReferenceCp": -65,
+          "observedBestCp": -65,
+          "actualScoreCpMover": -210,
+          "belowObservedBestCp": {
+            "d8e7": 5,
+            "f8e8": 21
+          },
+          "aboveBadCp": {
+            "d8e7": 140,
+            "f8e8": 124
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g04885_p020",
+      "fullCaseSha256": "f6920d001759d8c23e224bd430850353239355fac8af61cb2914cc47d118b5b6",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "e8g8": -15,
+            "h7h6": -16
+          },
+          "unrestrictedReferenceCp": -15,
+          "observedBestCp": -15,
+          "actualScoreCpMover": -108,
+          "belowObservedBestCp": {
+            "e8g8": 0,
+            "h7h6": 1
+          },
+          "aboveBadCp": {
+            "e8g8": 93,
+            "h7h6": 92
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "e8g8": -12,
+            "h7h6": -18
+          },
+          "unrestrictedReferenceCp": -15,
+          "observedBestCp": -12,
+          "actualScoreCpMover": -119,
+          "belowObservedBestCp": {
+            "e8g8": 0,
+            "h7h6": 6
+          },
+          "aboveBadCp": {
+            "e8g8": 107,
+            "h7h6": 101
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g03091_p018",
+      "fullCaseSha256": "2a1e47fc62af32a46e4c1f6bb85759cafaebe3c1e22e953baa199b39954db739",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "d8e8": 243,
+            "d8e7": 235
+          },
+          "unrestrictedReferenceCp": 232,
+          "observedBestCp": 243,
+          "actualScoreCpMover": 149,
+          "belowObservedBestCp": {
+            "d8e8": 0,
+            "d8e7": 8
+          },
+          "aboveBadCp": {
+            "d8e8": 94,
+            "d8e7": 86
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "d8e8": 245,
+            "d8e7": 240
+          },
+          "unrestrictedReferenceCp": 237,
+          "observedBestCp": 245,
+          "actualScoreCpMover": 146,
+          "belowObservedBestCp": {
+            "d8e8": 0,
+            "d8e7": 5
+          },
+          "aboveBadCp": {
+            "d8e8": 99,
+            "d8e7": 94
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g04842_p047",
+      "fullCaseSha256": "9ba5be9c00ffe165fa4730cb3d924c67dda310200dc24813e762fba6a92c6984",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "c3a5": 337,
+            "c3b4": 332
+          },
+          "unrestrictedReferenceCp": 361,
+          "observedBestCp": 361,
+          "actualScoreCpMover": 186,
+          "belowObservedBestCp": {
+            "c3a5": 24,
+            "c3b4": 29
+          },
+          "aboveBadCp": {
+            "c3a5": 151,
+            "c3b4": 146
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "c3a5": 337,
+            "c3b4": 341
+          },
+          "unrestrictedReferenceCp": 364,
+          "observedBestCp": 364,
+          "actualScoreCpMover": 207,
+          "belowObservedBestCp": {
+            "c3a5": 27,
+            "c3b4": 23
+          },
+          "aboveBadCp": {
+            "c3a5": 130,
+            "c3b4": 134
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "g00744_p027",
+      "fullCaseSha256": "e387ca4264b6e811317964e3ddc71301948a5de439cebf19d85ca5690990f04f",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "f2f3": -81,
+            "f2e2": -69
+          },
+          "unrestrictedReferenceCp": -66,
+          "observedBestCp": -66,
+          "actualScoreCpMover": -163,
+          "belowObservedBestCp": {
+            "f2f3": 15,
+            "f2e2": 3
+          },
+          "aboveBadCp": {
+            "f2f3": 82,
+            "f2e2": 94
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "f2f3": -73,
+            "f2e2": -65
+          },
+          "unrestrictedReferenceCp": -64,
+          "observedBestCp": -64,
+          "actualScoreCpMover": -177,
+          "belowObservedBestCp": {
+            "f2f3": 9,
+            "f2e2": 1
+          },
+          "aboveBadCp": {
+            "f2f3": 104,
+            "f2e2": 112
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "src02_g06749_p035",
+      "fullCaseSha256": "68e0aeadb0db11f4063fe1993265e6cebec9f10de826b2a30504553e02c50579",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "d2f3": 138,
+            "e1g1": 125
+          },
+          "unrestrictedReferenceCp": 142,
+          "observedBestCp": 142,
+          "actualScoreCpMover": -73,
+          "belowObservedBestCp": {
+            "d2f3": 4,
+            "e1g1": 17
+          },
+          "aboveBadCp": {
+            "d2f3": 211,
+            "e1g1": 198
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "d2f3": 146,
+            "e1g1": 135
+          },
+          "unrestrictedReferenceCp": 154,
+          "observedBestCp": 154,
+          "actualScoreCpMover": -63,
+          "belowObservedBestCp": {
+            "d2f3": 8,
+            "e1g1": 19
+          },
+          "aboveBadCp": {
+            "d2f3": 209,
+            "e1g1": 198
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "src02_g06737_p053",
+      "fullCaseSha256": "68323cc6551e7f4c619d246901bbcfd924f454f57c016360cd9ba05044994980",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "d2e2": 29,
+            "h3h4": 51
+          },
+          "unrestrictedReferenceCp": 57,
+          "observedBestCp": 57,
+          "actualScoreCpMover": -73,
+          "belowObservedBestCp": {
+            "d2e2": 28,
+            "h3h4": 6
+          },
+          "aboveBadCp": {
+            "d2e2": 102,
+            "h3h4": 124
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "d2e2": 38,
+            "h3h4": 38
+          },
+          "unrestrictedReferenceCp": 64,
+          "observedBestCp": 64,
+          "actualScoreCpMover": -55,
+          "belowObservedBestCp": {
+            "d2e2": 26,
+            "h3h4": 26
+          },
+          "aboveBadCp": {
+            "d2e2": 93,
+            "h3h4": 93
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "src02_g06286_p027",
+      "fullCaseSha256": "3e2c82743be5dd1af7c042bf3843d5cd948d312ad15f498061aac94e39cc7457",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "e2d4": 14,
+            "e2g3": 9
+          },
+          "unrestrictedReferenceCp": 11,
+          "observedBestCp": 14,
+          "actualScoreCpMover": -79,
+          "belowObservedBestCp": {
+            "e2d4": 0,
+            "e2g3": 5
+          },
+          "aboveBadCp": {
+            "e2d4": 93,
+            "e2g3": 88
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "e2d4": 13,
+            "e2g3": 3
+          },
+          "unrestrictedReferenceCp": 12,
+          "observedBestCp": 13,
+          "actualScoreCpMover": -62,
+          "belowObservedBestCp": {
+            "e2d4": 0,
+            "e2g3": 10
+          },
+          "aboveBadCp": {
+            "e2d4": 75,
+            "e2g3": 65
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "src02_g06339_p047",
+      "fullCaseSha256": "ea53821009792ff011c5384c6cbed50c42d6b88ff80da7a751d7cb781569a5e5",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "e1a1": 22,
+            "g1f1": 23
+          },
+          "unrestrictedReferenceCp": 39,
+          "observedBestCp": 39,
+          "actualScoreCpMover": -110,
+          "belowObservedBestCp": {
+            "e1a1": 17,
+            "g1f1": 16
+          },
+          "aboveBadCp": {
+            "e1a1": 132,
+            "g1f1": 133
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "e1a1": 19,
+            "g1f1": 13
+          },
+          "unrestrictedReferenceCp": 25,
+          "observedBestCp": 25,
+          "actualScoreCpMover": -116,
+          "belowObservedBestCp": {
+            "e1a1": 6,
+            "g1f1": 12
+          },
+          "aboveBadCp": {
+            "e1a1": 135,
+            "g1f1": 129
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "src02_g06634_p024",
+      "fullCaseSha256": "202eb22da3b8925201549a8bc2ef3fb52c1332cf0c57f3a892f4e87c02f2fa0e",
+      "budgets": {
+        "3M": {
+          "scoresCpMover": {
+            "h8e8": 84,
+            "d8e8": 54
+          },
+          "unrestrictedReferenceCp": 72,
+          "observedBestCp": 84,
+          "actualScoreCpMover": -52,
+          "belowObservedBestCp": {
+            "h8e8": 0,
+            "d8e8": 30
+          },
+          "aboveBadCp": {
+            "h8e8": 136,
+            "d8e8": 106
+          },
+          "passed": true
+        },
+        "10M": {
+          "scoresCpMover": {
+            "h8e8": 75,
+            "d8e8": 56
+          },
+          "unrestrictedReferenceCp": 67,
+          "observedBestCp": 75,
+          "actualScoreCpMover": -62,
+          "belowObservedBestCp": {
+            "h8e8": 0,
+            "d8e8": 19
+          },
+          "aboveBadCp": {
+            "h8e8": 137,
+            "d8e8": 118
+          },
+          "passed": true
+        }
+      }
+    }
+  ],
+  "exclusions": {
+    "schemaVersion": 1,
+    "status": "excluded_from_strict50",
+    "sourceManifestSha256": "a5be4364ad0febe882f8a24a73aba8c3f802e7b32eb0479047166c7fd90f0b87",
+    "rule": "At each3M/10M budget, compare each selected control with max(unrestricted reference, both selected forced-control scores); maximum allowed loss40cp.",
+    "cases": [
+      {
+        "id": "g03789_p045",
+        "spreadsCp": {
+          "author3M": 80,
+          "independent10M": 73
+        }
+      },
+      {
+        "id": "g00308_p021",
+        "spreadsCp": {
+          "independent10M": 45
+        }
+      },
+      {
+        "id": "g04809_p038",
+        "spreadsCp": {
+          "independent10M": 46
+        }
+      },
+      {
+        "id": "g02241_p043",
+        "spreadsCp": {
+          "author3M": 41,
+          "independent10M": 42
+        }
+      }
+    ],
+    "note": "These four unpublished candidate sets were held by the same two-control consistency check. A failed finite-search gate does not by itself prove an option unsound."
+  }
 }
