@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import * as E from '../js/positional-engine.js';
+import catalog from '../data/positional/catalog.js';
+let run=E.newRun(catalog,{variant:'fixed',choiceCount:3,board:'3d'},{seed:7,now:1000});
+run=E.resume(run,2000);run=E.answer(run,catalog,run.deck[0].options[0],3000);
+const before=JSON.stringify(run.attempts),deck=JSON.stringify(run.deck);
+run=E.recoverIn2D(run,9000);E.validateRun(run,catalog);
+assert.equal(JSON.stringify(run.attempts),before);assert.equal(JSON.stringify(run.deck),deck);
+assert.equal(run.config.board,'2d');assert.equal(run.status,'paused');assert.equal(run.activeMs,1000);assert.equal(run.boardRecovery.afterAttempts,1);
+assert(E.comparisonKey(run).endsWith('recovered-3d-to-2d'));
+let store=E.saveRun(E.emptyStore(),run,catalog);store=E.parseStore(JSON.stringify(store));
+const ended=E.endSavedRun(store,20000);assert.equal(ended.active,null);assert.equal(ended.history.length,1);assert.equal(ended.history[0].reason,'ended');assert.equal(JSON.stringify(ended.history[0].attempts),before);assert.equal(ended.history[0].activeMs,1000);
+const newRun=E.newRun(catalog,{variant:'survival',choiceCount:2,board:'2d'},{seed:9,now:21000});const next=E.saveRun(ended,newRun,catalog);assert.equal(next.active.attempts.length,0);assert.equal(next.history.length,1);assert.equal(next.active.config.variant,'survival');
+assert.deepEqual(E.endSavedRun(ended,30000),ended);
+assert.throws(()=>E.validateRun({...run,boardRecovery:{...run.boardRecovery,afterAttempts:99}},catalog));
+console.log('2D recovery preserves answers/deck/time, segregates comparisons, and quit archives without forced resume');
