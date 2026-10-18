@@ -166,10 +166,11 @@ export function createBoard(container, options = {}) {
   const layerCoords = svgEl('g', { class: 'b2d-layer-coords' });
   const layerHighlights = svgEl('g', { class: 'b2d-layer-highlights' });
   const layerArrows = svgEl('g', { class: 'b2d-layer-arrows' });
+  const layerCandidateLabels = svgEl('g', {class:'b2d-layer-candidate-labels','pointer-events':'none'});
   const layerHover = svgEl('g', { class: 'b2d-layer-hover' });
   const layerPieces = svgEl('g', { class: 'b2d-layer-pieces' });
   const layerFlash = svgEl('g', { class: 'b2d-layer-flash', 'pointer-events': 'none' });
-  svg.append(layerSquares, layerCoords, layerHighlights, layerArrows, layerHover, layerPieces, layerFlash);
+  svg.append(layerSquares, layerCoords, layerHighlights, layerArrows, layerHover, layerPieces, layerCandidateLabels, layerFlash);
 
   // border/rim around the whole board
   const rim = svgEl('rect', {
@@ -526,18 +527,18 @@ export function createBoard(container, options = {}) {
 
   // ---- arrows ---------------------------------------------------------------
   let lastArrows = [];
-  function arrow(from, to, kind) {
+  function arrow(from, to, kind, candidate) {
     const fp = parseSquare(from);
     const tp = parseSquare(to);
     if (!fp || !tp) return;
-    lastArrows.push({ from, to, kind });
+    lastArrows.push({ from, to, kind, candidate });
     const a = squareToXY(from, orientation);
     const b = squareToXY(to, orientation);
     const x1 = a.x + 0.5, y1 = a.y + 0.5;
     const x2 = b.x + 0.5, y2 = b.y + 0.5;
-    const color = kind && HIGHLIGHT_KINDS.includes(kind)
+    const color = candidate?.color || (kind && HIGHLIGHT_KINDS.includes(kind)
       ? tok(`--hl-${kind}`)
-      : tok('--arrow');
+      : tok('--arrow'));
 
     const dx = x2 - x1, dy = y2 - y1;
     const len = Math.hypot(dx, dy) || 1;
@@ -550,7 +551,7 @@ export function createBoard(container, options = {}) {
     const baseX = tipX - ux * headLen, baseY = tipY - uy * headLen;
     const nx = -uy, ny = ux;
 
-    const g = svgEl('g', { class: 'b2d-arrow' });
+    const g = svgEl('g', { class: 'b2d-arrow', opacity: candidate?.opacity ?? 1 });
     g.appendChild(svgEl('line', {
       x1, y1, x2: baseX, y2: baseY,
       stroke: color, 'stroke-width': shaftWidth, 'stroke-linecap': 'round',
@@ -561,11 +562,21 @@ export function createBoard(container, options = {}) {
       d: `M${tipX},${tipY} L${p1x},${p1y} L${p2x},${p2y} Z`,
       fill: color,
     }));
+    if (candidate?.label) {
+      // Neutral letters encode identity only, never correctness.
+      const i=Math.max(0,'ABC'.indexOf(candidate.label));
+      const x=x2+(i===0?-0.25:0.25), y=y2+(i===2?0.25:-0.25);
+      const badge=svgEl('g',{opacity:candidate.opacity??1});
+      badge.appendChild(svgEl('circle', {cx:x,cy:y,r:0.2,fill:color,stroke:'#fff','stroke-width':0.025}));
+      const text=svgEl('text',{x,y:y+0.075,'text-anchor':'middle','font-size':0.23,'font-family':'sans-serif','font-weight':'700',fill:'#fff'});
+      text.textContent=String(candidate.label).slice(0,1);badge.appendChild(text);layerCandidateLabels.appendChild(badge);
+    }
     layerArrows.appendChild(g);
   }
 
   function clearArrows() {
     layerArrows.textContent = '';
+    layerCandidateLabels.textContent = '';
     lastArrows = [];
   }
 
@@ -604,7 +615,7 @@ export function createBoard(container, options = {}) {
     renderHighlights();
     const arrows = lastArrows;
     clearArrows();
-    for (const a of arrows) arrow(a.from, a.to, a.kind);
+    for (const a of arrows) arrow(a.from, a.to, a.kind, a.candidate);
   }
 
   function setOrientation(side) {

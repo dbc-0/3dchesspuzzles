@@ -59,6 +59,7 @@ import { START_FEN } from './board-interface.js';
    a missing module is a clean import failure rather than a mystery 404.
    ========================================================================== */
 const MODES = {
+  positional: { title: 'Positional', defaultBoard: '2d', load: () => import('./modes/positional.js') },
   blunderrush: { title: 'Blunder Rush', load: () => import('./modes/blunderrush.js') },
   // Perspective solving is the reason this app exists, so Tactics opens in 3D
   // unless the setup screen says otherwise. The tile is named "Tactics", not
@@ -366,6 +367,9 @@ async function route() {
     case '/':
       renderHome();
       break;
+    case '/positional':
+      await renderPositionalSetup();
+      break;
     case '/rush':
       renderRushSetup();
       break;
@@ -441,6 +445,16 @@ function renderHome() {
               </button>
             </div>
           </div>
+
+          <div class="section"><div class="mode-list">
+            <button class="mode-card mode-card--classic" data-go="#/positional">
+              <span class="mode-card__icon">${icon('i-puzzle')}</span>
+              <span class="mode-card__body"><span class="mode-card__title">Positional</span>
+              <span class="mode-card__desc">Find the inferior quiet move</span>
+              <span class="mode-card__meta">Rush · Fixed cycles · Themes</span></span>
+              <span class="mode-card__chevron">${icon('i-chevron')}</span>
+            </button>
+          </div></div>
 
           <!-- TIER 2 — regular tactic solving -->
           <div class="section">
@@ -536,6 +550,32 @@ function renderHome() {
 /* =============================================================================
    BLUNDER RUSH SETUP
    ========================================================================== */
+// Positional data and review are independent of the rated tactics corpus.
+function positionalPersistence() {
+  const key = 'tt.positional.v1';
+  return {
+    get: () => localStorage.getItem(key),
+    compareAndSet(expected, next) {
+      try {
+        if (localStorage.getItem(key) !== expected) return false;
+        localStorage.setItem(key, next); return true;
+      } catch { return false; }
+    },
+  };
+}
+async function renderPositionalSetup() {
+  const expectedRoute=currentRoute;
+  const screen = fromHTML('<div class="screen screen--menu"></div>');
+  try {
+    const {createSetup} = await import('./modes/positional.js');
+    if(currentRoute!==expectedRoute)return;
+    createSetup(screen, {persistence: positionalPersistence(), go: navigate, board: settings.get().board});
+    mountScreen(screen);
+  } catch(err) {
+    if(currentRoute===expectedRoute)renderErrorScreen({title:'Positional',message:'Positional content could not be loaded.',detail:String(err.message||err)});
+  }
+}
+
 function renderRushSetup() {
   const s = settings.get();
   let variant = 'timed';
@@ -1074,7 +1114,7 @@ async function createBoardHandle(container, getSettings = () => settings.get(), 
     getOrientation() { return inner.getOrientation(); },
     highlight(sq, kind) { return inner.highlight(sq, kind); },
     clearHighlights(kind) { return inner.clearHighlights(kind); },
-    arrow(from, to, kind) { return inner.arrow(from, to, kind); },
+    arrow(from, to, kind, candidate) { return inner.arrow(from, to, kind, candidate); },
     clearArrows() { return inner.clearArrows(); },
     flash(kind) { return inner.flash(kind); },
     setSquareTapHandler(fn) {
@@ -1172,7 +1212,7 @@ async function renderPlay(params) {
   // setup screen via the URL; prompt style follows from the board. A mode never
   // has to think about which rating bucket it is filling.
   const s = settings.get();
-  const boardParam = params.get('board') === '3d' ? '3d'
+  let boardParam = params.get('board') === '3d' ? '3d'
     : params.get('board') === '2d' ? '2d' : null;
   // 'own' unless the user deliberately picked otherwise on a setup screen.
   // Never flipped implicitly — that would silently mislabel a bucket.
@@ -1186,6 +1226,16 @@ async function renderPlay(params) {
     perspective,
     framing,
   };
+  if (modeId === 'positional') {
+    config.choices = Number(params.get('choices')) === 2 ? 2 : 3;
+    config.theme = params.get('theme') || 'all';
+    config.size = Number(params.get('size')) === 100 ? 100 : 0;
+    config.resume = params.get('resume') === '1';
+    config.history = params.has('history') && /^\d+$/.test(params.get('history')) ? Number(params.get('history')) : null;
+    const saved = store.get('tt.positional.v1');
+    const pinned = config.history !== null ? saved?.history?.[config.history] : saved?.active;
+    if (['2d','3d'].includes(pinned?.config?.board)) boardParam = pinned.config.board;
+  }
   const drill = params.get('drill');
   if (drill) config.drill = drill;
 
@@ -1289,7 +1339,7 @@ async function renderPlay(params) {
   // Puzzle data is only needed by modes that use it, but every mode that does
   // would otherwise hang here silently. Fail loudly, once, up front.
   let dataError = null;
-  try { await ensureData(); }
+  try { if (modeId !== 'positional') await ensureData(); }
   catch (err) { dataError = err; }
   if (session.disposed) { hideLoading(); return; }
 
@@ -1388,6 +1438,7 @@ function buildContext(session, board) {
     data: wrapData(() => session.board, Number(session.config.plies) || 0),
     settings: { ...session.runSettings },
     config: session.config,
+    persistence: session.modeId === 'positional' ? positionalPersistence() : undefined,
     ui: {
       toast: ui.toast,
       confirm: ui.confirm,
@@ -1431,6 +1482,13 @@ function buildContext(session, board) {
         });
         return next;
       },
+    },
+    onCycleStart: (config) => {
+      session.finished = false; session.progressed = false;
+      if(session.modeId==='positional') {
+        const route=`#/play?mode=positional&resume=1&board=${config.board}`;
+        history.replaceState(null,'',route);currentRoute=route.slice(1);
+      }
     },
     onFinish: (summary) => finishRun(session, summary),
   };
@@ -1634,6 +1692,7 @@ async function requestExit() {
   const session = host;
   if (!session) return;
 
+  if (session.modeId === 'positional') { navigate('#/positional', {replace:true}); return; }
   if (runInProgress(session)) {
     const score = session.headerState && session.headerState.score;
     const ok = await ui.confirm({
@@ -1660,6 +1719,7 @@ async function requestExit() {
 async function requestRestart() {
   const session = host;
   if (!session) return;
+  if (session.modeId === 'positional') { session.handle.restart(); return; }
   const score = session.headerState && session.headerState.score;
   const ok = await ui.confirm({
     title: 'Restart this run?',
@@ -1855,6 +1915,15 @@ function finishRun(session, summary) {
   // must not put a confirm sheet in the way.
   session.finished = true;
   const safe = summary && typeof summary === 'object' ? summary : {};
+  if (session.modeId === 'positional' && safe.inlineReview) {
+    stats.record('positional.run', {mode:'positional', choiceCount:safe.choiceCount, corpusVersion:safe.corpusVersion, config:safe.config, comparisonKey:safe.comparisonKey, activeMs:safe.activeMs, score:safe.score, answers:safe.history?.length || 0});
+    if(Number.isInteger(safe.reviewIndex)&&safe.reviewIndex>=0){
+      const route=`#/play?mode=positional&history=${safe.reviewIndex}&board=${safe.config.board}`;
+      history.replaceState(null,'',route);currentRoute=route.slice(1);
+    }
+    ui.haptic('gameover');
+    return; // The mode owns its richer, persistent end review; no invented Glicko rating.
+  }
   const key = `${session.modeId}:${session.config.variant || 'default'}`;
   const score = Number(safe.score) || 0;
   const previousBest = readBests()[key] || 0;
@@ -4019,6 +4088,7 @@ function openSettingsSheet() {
 /** Rebuild the live board when a renderer-affecting setting changes mid-run. */
 function refreshBoardFromSettings() {
   if (!host || !host.board) return;
+  if (host.modeId === 'positional') { ui.toast('Positional keeps the board setting fixed for this run. Changes apply next run.'); return; }
   host.runSettings = settings.get();
   // Board and prompt style are both rating axes, so changing either mid-run
   // moves the run into a different bucket rather than quietly polluting the old

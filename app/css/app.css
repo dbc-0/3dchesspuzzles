@@ -1895,3 +1895,30 @@ a {
 
   .history-item__rail { forced-color-adjust: none; }
 }
+
+/* Positional mode: shared shell/board, distinct answer and end-review flow. */
+.screen--positional { display:flex; flex-direction:column; min-height:0; }
+.screen--positional .pos-content { flex:1; min-height:0; overflow:auto; padding:8px 16px max(24px,env(safe-area-inset-bottom)); }
+.pos-content > *, .pos-setup { width:100%; max-width:600px; margin-left:auto; margin-right:auto; }
+.pos-top,.pos-status,.pos-actions { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.pos-top { font-size:14px; }.pos-status { margin-top:8px; font-variant-numeric:tabular-nums; }
+.pos-prompt { margin-top:8px; margin-bottom:8px; font-size:14px; }
+.pos-board { width:min(100%,390px); aspect-ratio:1; position:relative; margin:8px auto; }
+.pos-board > [data-shell=board] { width:100%; height:100%; }
+.pos-choices { display:grid; grid-template-columns:repeat(var(--choices),1fr); gap:8px; }
+.pos-choice { display:flex; flex-direction:column; min-height:56px; border:2px solid var(--choice); padding:7px; gap:2px; }
+.pos-choice strong { color:var(--choice); }.pos-choice.is-selected { outline:3px solid var(--choice); outline-offset:1px; }
+.pos-submit { display:block; width:100%; margin-top:10px; min-height:44px; }
+.pos-feedback { min-height:20px; text-align:center; font-size:14px; margin:8px 0; }
+.pos-actions .btn,.pos-review-tabs .btn { min-height:44px; }
+.pos-setup { display:flex; flex-direction:column; gap:14px; padding:16px; }
+.pos-setup label,.pos-line label { display:flex; flex-direction:column; gap:6px; }
+.pos-setup select,.pos-line select { min-height:44px; width:100%; font:inherit; padding:8px; color:var(--text-primary,inherit); background:var(--surface,#20242a); border:1px solid var(--border,#777); border-radius:8px; }
+.pos-setup [hidden] { display:none!important; }.pos-small,.pos-review-body details { font-size:13px; line-height:1.5; }
+.pos-history { display:flex; flex-direction:column; gap:8px; }
+.pos-review-tabs { display:flex; gap:6px; overflow:auto; margin:12px 0; padding:3px; }
+.pos-review-tabs button[aria-pressed=true] { outline:2px solid currentColor; }
+.pos-review-body p { line-height:1.5; margin:8px 0 14px; }.pos-review-body h3 { font-size:16px; margin:16px 0 6px; }
+.pos-review-body details,.pos-line { padding:12px 0; }.pos-review-body summary { cursor:pointer; min-height:44px; }
+.pos-review-body a { text-decoration:underline; }.pos-controls h2 { font-size:19px; margin:12px 0; }
+@media (max-width:420px) { .screen--positional .pos-content { padding-left:10px; padding-right:10px; }.pos-board { max-width:350px; } }

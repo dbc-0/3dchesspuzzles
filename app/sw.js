@@ -47,7 +47,7 @@
                  build until every tab closes.
    ========================================================================== */
 
-const VERSION = 'v5';
+const VERSION = 'v6-positional';
 const SHELL_CACHE = `tt-shell-${VERSION}`;
 const DATA_CACHE = 'tt-data';           // deliberately unversioned: bands are immutable
 const KEEP = new Set([SHELL_CACHE, DATA_CACHE]);
@@ -86,6 +86,10 @@ const PRECACHE = [
   './js/modes/tactics.js',
   './js/modes/visualization.js',
   './js/modes/drills.js',
+  './js/modes/positional.js',
+  './js/positional-core.js',
+  './js/positional-engine.js',
+  './data/positional/catalog.js',
 
   // Small and needed at boot. The BANDS it points at are NOT precached.
   // data/games/index.json is deliberately absent: review is the only screen that
