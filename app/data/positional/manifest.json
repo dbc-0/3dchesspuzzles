@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "corpusVersion": "positional-training-strict25-20261018-v1",
+  "uniquePositions": 25,
+  "publicProjectionSha256": "6ad612d42172dbf33f285061fddd32b08c181b2d8dbaeb4fed435af632145f78",
+  "approvedThemeMapSha256": "995b81e81249068f95620b18dbf9295dea54e96b4a22b83c093087ee20475da1",
+  "note": "catalog.js embeds the exact approved source JSON values, then adds independently approved primary/secondary theme metadata. Broad practice filters are unions of those canonical tags. Historical cycles remain pinned.",
+  "binaryControls": [
+    {
+      "id": "g01330_p029",
+      "goodUci": "b3c4",
+      "scoreCpMover": 198,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.8769175410270691,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g01401_p023",
+      "goodUci": "f2f3",
+      "scoreCpMover": 222,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.7436770796775818,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g00806_p028",
+      "goodUci": "g7g6",
+      "scoreCpMover": -15,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.8110178112983704,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g03358_p047",
+      "goodUci": "a1a7",
+      "scoreCpMover": -29,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.013680966570973396,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g01892_p023",
+      "goodUci": "c2c3",
+      "scoreCpMover": 333,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.1552501767873764,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g04432_p023",
+      "goodUci": "d2d4",
+      "scoreCpMover": 227,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.18446937203407288,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g03680_p025",
+      "goodUci": "f1e1",
+      "scoreCpMover": 317,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.6829502582550049,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g04576_p027",
+      "goodUci": "f2f4",
+      "scoreCpMover": -120,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.034821949899196625,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g01423_p030",
+      "goodUci": "e8g8",
+      "scoreCpMover": 341,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.7994962334632874,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g01344_p046",
+      "goodUci": "g8d8",
+      "scoreCpMover": -8,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.7562690377235413,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g03717_p061",
+      "goodUci": "a1d1",
+      "scoreCpMover": 255,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.04151792824268341,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "low_g00143_p020",
+      "goodUci": "b7b6",
+      "scoreCpMover": 0,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.01618463173508644,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g00672_p018",
+      "goodUci": "f8e7",
+      "scoreCpMover": -83,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.7452173829078674,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g03476_p021",
+      "goodUci": "f1c4",
+      "scoreCpMover": 318,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.8273289203643799,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g00112_p018",
+      "goodUci": "c7c6",
+      "scoreCpMover": -41,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.0915331095457077,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g02061_p027",
+      "goodUci": "e2f3",
+      "scoreCpMover": 312,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.3802527189254761,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g01731_p051",
+      "goodUci": "e3e4",
+      "scoreCpMover": 327,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.4173121750354767,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g04297_p023",
+      "goodUci": "b1d2",
+      "scoreCpMover": 26,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.6654207706451416,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g01596_p030",
+      "goodUci": "c7c5",
+      "scoreCpMover": 318,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.09501335769891739,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g02543_p043",
+      "goodUci": "f1e1",
+      "scoreCpMover": 471,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.07160212099552155,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g03989_p023",
+      "goodUci": "c2c3",
+      "scoreCpMover": -169,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.2624264657497406,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g04232_p022",
+      "goodUci": "g7g5",
+      "scoreCpMover": -138,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.4044100344181061,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g01832_p023",
+      "goodUci": "d3d4",
+      "scoreCpMover": 267,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.8041136860847473,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g02124_p028",
+      "goodUci": "d7e7",
+      "scoreCpMover": -168,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.5453070402145386,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    },
+    {
+      "id": "g04425_p030",
+      "goodUci": "f5d3",
+      "scoreCpMover": 376,
+      "nodeBudget": 10000000,
+      "policyProbability": 0.3977702856063843,
+      "tieRule": "Higher independent10M score; then higher measured Maia probability; then ascending UCI."
+    }
+  ]
+}

@@ -2406,7 +2406,7 @@ export function createBoard(container, options = {}) {
     return g;
   }
 
-  function arrow(from, to, kind) {
+  function arrow(from, to, kind, candidate) {
     if (destroyed) return;
     const a = new THREE.Vector3();
     const b = new THREE.Vector3();
@@ -2423,6 +2423,11 @@ export function createBoard(container, options = {}) {
       mat.userData = { ...arrowMat.userData, perArrow: true };
       applyColorToken(mat, token(`--hl-${kind}`), ARROW_BASE_OPACITY);
     }
+    if (candidate) {
+      if (!mat.userData.perArrow) mat=mat.clone();
+      mat.userData={...mat.userData,perArrow:true};
+      applyColorToken(mat, candidate.color || token('--arrow'), ARROW_BASE_OPACITY * (candidate.opacity ?? 1));
+    }
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(a.x, TOP_Y + 0.06, a.z);
     mesh.rotation.y = Math.atan2(-dz / len, dx / len);
@@ -2430,6 +2435,17 @@ export function createBoard(container, options = {}) {
     mesh.renderOrder = 20;
     arrowGroup.add(mesh);
     arrows.push(mesh);
+    if (candidate?.label) {
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=128;
+      const ctx=canvas.getContext('2d');ctx.fillStyle=candidate.color||'#2e6ca9';ctx.beginPath();ctx.arc(64,64,57,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff';ctx.font='bold 78px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(candidate.label).slice(0,1),64,69);
+      const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+      const material=new THREE.SpriteMaterial({map:texture,transparent:true,opacity:candidate.opacity??1,depthTest:false});
+      material.userData={perArrow:true,labelTexture:texture};
+      const i=Math.max(0,'ABC'.indexOf(candidate.label));
+      const badge=new THREE.Sprite(material);badge.position.set(b.x+(i===0?-0.24:0.24),TOP_Y+0.45,b.z+(i===2?-0.24:0.24));badge.scale.set(0.42,0.42,1);badge.layers.set(LAYER_OVERLAY);badge.renderOrder=25;
+      arrowGroup.add(badge);arrows.push(badge);
+    }
     requestRender();
   }
 
@@ -2437,7 +2453,8 @@ export function createBoard(container, options = {}) {
     if (destroyed) return;
     for (const mesh of arrows) {
       arrowGroup.remove(mesh);
-      mesh.geometry.dispose();
+      if (!mesh.isSprite) mesh.geometry.dispose();
+      mesh.material?.userData?.labelTexture?.dispose();
       if (mesh.material && mesh.material.userData.perArrow) mesh.material.dispose();
     }
     arrows.length = 0;
