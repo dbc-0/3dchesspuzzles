@@ -1981,3 +1981,7 @@ a {
   .pos-feedback { font-size:11px; line-height:1.25; }
   .pos-play-actions .btn { padding-inline:6px; white-space:normal; }
 }
+
+.pos-return-bar { position:sticky; top:0; z-index:5; background:var(--surface); padding:8px 0; }
+.pos-return-bar .pos-small { margin:6px 0; }
+.pos-lichess-link { margin:10px 0; }

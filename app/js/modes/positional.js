@@ -1,7 +1,7 @@
 import catalog from '../../data/positional/catalog.js';
 import * as E from '../positional-engine.js';
 import estimates from '../../data/positional/win-estimates.js';
-import {winComparison} from '../positional-review.js';
+import {winComparison,lichessGameLink} from '../positional-review.js';
 import {LETTERS,COLORS,formatTime,lineFrames,sourceRatingText,selectionEvidenceText} from '../positional-core.js';
 
 export const meta={id:'positional',title:'Positional',boardOptions:{board:'2d'}};
@@ -79,7 +79,7 @@ export function createMode(ctx) {
   if(Number.isInteger(historyIndex)&&store.history[historyIndex]) {
     run=store.history[historyIndex];data=store.corpora[run.version];notified=true;readOnlyReview=true;
   }else if(store.active){
-    run=store.active;data=store.corpora[run.version];run={...run,status:'paused',reason:'restored',runningSince:null};
+    run=store.active;data=store.corpora[run.version];run={...run,status:'paused',reason:run.reason==='review-last'&&E.canReviewLast(run)?'review-last':'restored',runningSince:null};
   }else{
     if(store.active)throw new Error('A saved positional run exists. Resume it from Positional setup first.');
     run=E.newRun(catalog,{variant:ctx.config.variant,choiceCount:ctx.config.choices,theme:['timed','survival'].includes(ctx.config.variant)?'all':ctx.config.theme,size:ctx.config.size,board:ctx.settings.board});
@@ -116,7 +116,7 @@ export function createMode(ctx) {
   function render(){
     if(stopped)return;
     const openDetails=[...(root.querySelectorAll?.('details[data-detail][open]')||[])].map(el=>el.dataset.detail);
-    const complete=run.status==='complete',showingFeedback=run.status==='paused'&&run.reason==='feedback',item=showingFeedback?run.attempts.at(-1):run.deck[run.index],p=!complete&&data.cases.find(p=>p.id===item.id);
+    const midReview=run.status==='paused'&&run.reason==='review-last'&&E.canReviewLast(run),complete=run.status==='complete'||midReview,showingFeedback=run.status==='paused'&&run.reason==='feedback',item=showingFeedback?run.attempts.at(-1):run.deck[run.index],p=!complete&&data.cases.find(p=>p.id===item.id);
     const rush=['timed','survival'].includes(run.config.variant);
     const modeText=`${label(run.config.variant)} · ${run.config.choiceCount} choices${run.config.variant==='fixed'?` · cycle ${run.cycleNumber}`:''}`;
     const header=`<header class="app-bar"><div class="readouts pos-readouts" data-shell="header" aria-label="Positional progress">
@@ -137,32 +137,33 @@ export function createMode(ctx) {
     root.querySelector('.pos-pause').hidden=!paused;
     if(run.status==='paused'&&run.reason!=='feedback'){
       root.querySelector('.pos-pause').innerHTML=`${icon(run.reason==='ready'?'i-puzzle':'i-timer')}<h2>${run.reason==='ready'?'Ready when you are':'Paused'}</h2><p>${run.reason==='ready'?'The clock starts when you begin.':'Your progress is saved on this device.'}</p>`;
-      controls.innerHTML=`<div class="pos-pause-actions"><button class="btn btn--primary btn--lg btn--block" data-action="resume" ${storageError?'disabled':''}>${run.reason==='ready'?'Begin':'Resume'}</button><button class="btn" data-action="end">End and review</button>${run.reason!=='ready'?'<a class="btn" href="#/positional">Save &amp; return to modes</a>':''}</div>`;
+      controls.innerHTML=`<div class="pos-pause-actions">${E.canReviewLast(run)?'<button class="btn" data-action="review-last">Review last position</button>':''}<button class="btn btn--primary btn--lg btn--block" data-action="resume" ${storageError?'disabled':''}>${run.reason==='ready'?'Begin':'Resume'}</button><button class="btn" data-action="end">End and review</button>${run.reason!=='ready'?'<a class="btn" href="#/positional">Save &amp; return to modes</a>':''}</div>`;
     }else{
       controls.innerHTML=`<p class="pos-answer-instruction" id="pos-answer-instruction">Tap the mistake</p><div class="pos-choices" role="group" aria-describedby="pos-answer-instruction" style="--choices:${item.options.length}">${item.options.map((uci,i)=>`<button class="answer pos-choice" data-choice="${uci}" aria-label="${LETTERS[i]}: ${esc(p.options.find(o=>o.uci===uci).san)}. Choose as the mistake" ${run.status!=='playing'?'disabled':''} style="--choice:${COLORS[i]}"><strong>${LETTERS[i]}</strong><span>${esc(p.options.find(o=>o.uci===uci).san)}</span></button>`).join('')}</div>
       <p class="pos-feedback" role="status">${esc(feedback||'One tap answers · or press '+LETTERS.slice(0,item.options.length).join(', '))}</p>
-      <div class="pos-actions pos-play-actions"><button class="btn" data-action="pause">Pause &amp; save</button><button class="btn" data-action="end">End and review</button></div>`;
+      <div class="pos-actions pos-play-actions">${E.canReviewLast(run)?'<button class="btn" data-action="review-last">Review last</button>':''}<button class="btn" data-action="pause">Pause &amp; save</button><button class="btn" data-action="end">End and review</button></div>`;
     }
     requestAnimationFrame(()=>{if(!stopped)board.resize();});
   }
   function renderReview(el){
-    const filtered=run.attempts.map((a,i)=>({a,i})).filter(({a})=>filter!=='misses'||!a.correct);
+    const midReview=run.status!=='complete';
+    const filtered=run.attempts.map((a,i)=>({a,i})).filter(({a,i})=>midReview?i===run.attempts.length-1:filter!=='misses'||!a.correct);
     if(!filtered.some(x=>x.i===reviewIndex))reviewIndex=filtered[0]?.i??0;
     const a=run.attempts[reviewIndex],p=a&&data.cases.find(p=>p.id===a.id);
-    el.innerHTML=`<h2>Run review · ${run.attempts.length?Math.round(run.score/run.attempts.length*100):0}%</h2><p class="pos-small">${run.score} of ${run.attempts.length} correct · ${duration(run.activeMs)} playing · ${run.config.choiceCount} choices</p>
+    el.innerHTML=`${midReview?'<div class="pos-return-bar"><button class="btn btn--primary btn--block" data-action="return-play">Return to game</button><p class="pos-small">Your run is paused. The next position is unchanged.</p></div>':''}<h2>${midReview?'Last position':'Run review'} · ${run.attempts.length?Math.round(run.score/run.attempts.length*100):0}%</h2><p class="pos-small">${run.score} of ${run.attempts.length} correct · ${duration(run.activeMs)} playing · ${run.config.choiceCount} choices</p>
       ${run.boardRecovery?`<p class="pos-small">Recovered from 3D to 2D after ${run.boardRecovery.afterAttempts} answers. This run is kept separate from unchanged-board comparisons.</p>`:''}
-      <div class="pos-actions"><button class="btn" data-filter="all" aria-pressed="${filter==='all'}">All (${run.attempts.length})</button><button class="btn" data-filter="misses" aria-pressed="${filter==='misses'}">Misses (${run.mistakes})</button></div>
+      <div class="pos-actions" ${midReview?'hidden':''}><button class="btn" data-filter="all" aria-pressed="${filter==='all'}">All (${run.attempts.length})</button><button class="btn" data-filter="misses" aria-pressed="${filter==='misses'}">Misses (${run.mistakes})</button></div>
       <div class="pos-review-tabs">${filtered.map(({a,i})=>`<button class="btn" data-review="${i}" aria-pressed="${i===reviewIndex}">${i+1} ${a.correct?'✓':'×'}</button>`).join('')}</div>
       ${!filtered.length?`<p>${filter==='misses'?'No misses in this run.':'No positions answered.'}</p>`:''}
       <div class="pos-review-body"></div>
-      <div class="pos-actions">${run.config.variant==='fixed'&&run.reason==='complete'?'<button class="btn btn--primary" data-action="repeat">Repeat this fixed set</button>':''}<a class="btn" href="#/positional">Modes &amp; history</a></div>
+      <div class="pos-actions">${midReview?'<button class="btn btn--primary" data-action="return-play">Return to game</button>':''}${run.config.variant==='fixed'&&run.reason==='complete'?'<button class="btn btn--primary" data-action="repeat">Repeat this fixed set</button>':''}<a class="btn" href="#/positional">Modes &amp; history</a></div>
       ${run.config.variant==='fixed'&&run.version!==catalog.version?'<p>A newer catalog is available in Modes. This cycle and Repeat keep the pinned version.</p>':''}`;
     if(!filtered.length){board.clearArrows();board.clearHighlights();root.querySelector('.pos-board').hidden=true;return;}
     root.querySelector('.pos-board').hidden=false;
-    const bad=p.options.find(o=>o.isBad),chosen=p.options.find(o=>o.uci===a.selectedUci);
+    const bad=p.options.find(o=>o.isBad),chosen=p.options.find(o=>o.uci===a.selectedUci),gameLink=lichessGameLink(p);
     const body=el.querySelector('.pos-review-body');
     body.innerHTML=`<div class="pos-result"><strong>${a.correct?'✓ Correct':'Missed this one'}</strong><span>${duration(a.answerMs)}</span></div><div class="pos-review-moves"><div><span>You chose</span><strong>${esc(chosen.san)}</strong></div><div><span>The mistake</span><strong>${esc(bad.san)}</strong></div></div>
-      <div class="pos-review-board-slot"></div>
+      <div class="pos-review-board-slot"></div>${gameLink?`<a class="btn btn--secondary btn--block pos-lichess-link" href="${esc(gameLink)}" target="_blank" rel="noopener noreferrer">Open game in Lichess ↗</a>`:''}
       <p class="pos-reason">${esc(p.explanation?.text||'')}</p>
       <div class="pos-tags" aria-label="Themes">${(p.themeIds||[]).map(t=>`<span>${esc(data.themes?.find(x=>x.id===t)?.label||t)}</span>`).join('')}</div>
       <div class="pos-win-estimates" data-win-estimates></div>
@@ -214,6 +215,12 @@ export function createMode(ctx) {
     const tab=e.target.closest('[data-review]');if(tab){reviewIndex=Number(tab.dataset.review);lineIndex=-1;render();return;}
     const f=e.target.closest('[data-filter]');if(f){filter=f.dataset.filter;lineIndex=-1;render();return;}
     switch(e.target.closest('[data-action]')?.dataset.action){
+      case 'review-last':
+        if(!E.canReviewLast(run)||storageError)return;
+        clearTimeout(feedbackTimer);feedbackTimer=0;run=E.reviewLast(run);feedback='';selected=null;filter='all';reviewIndex=run.attempts.length-1;lineIndex=-1;persist();render();break;
+      case 'return-play':
+        if(run.status!=='paused'||run.reason!=='review-last'||storageError)return;
+        lineIndex=-1;feedback='';selected=null;run=E.resume(run);persist();render();break;
       case 'resume':run=E.resume(run);feedback='';persist();render();break;
       case 'pause':stop();break;
       case 'end':finish('ended');break;

@@ -68,3 +68,6 @@ Positional setup uses the same mode cards and segmented controls as Blunder Rush
 
 ### Strict50 content increment
 The explicit corpus version `positional-training-strict50-20261018-v1` adds 25 approved positions to the prior 25. Started cycles and prior reviews keep their saved source snapshots; a new run uses 50. The public manifest contains the two-budget observed-best consistency receipts and the four excluded, unpublished candidates. All selected controls pass the same operational margins against the strongest measured reference/selected-control result. Source ratings and provisional hybrid difficulty labels remain in end review.
+
+## Mid-run review
+Survival, fixed study and theme practice can pause to review the last answered position, then return to the unchanged next question. Review does not finish the run or count toward active time. Reload preserves the paused review. Timed Rush keeps end-only review. Review includes a prominent original Lichess game link, anchored to the position before the candidate move for standard-start source games.

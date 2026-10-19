@@ -27,3 +27,16 @@ export async function winComparison(p,overlay,referenceGoodUci) {
     return {referenceGoodUci,badUci:bad.uci,rows};
   }catch{return null;}
 }
+
+// Source games are public, and the anchor is the number of completed plies.
+export function lichessGameLink(p) {
+  try {
+    const u=new URL(p.source?.url);
+    if(u.origin!=='https://lichess.org'||u.username||u.password||!/^\/[A-Za-z0-9]{8}(?:\/(?:white|black))?\/?$/.test(u.pathname))return null;
+    const id=u.pathname.split('/')[1], moves=p.history?.movesUci;
+    const initial=p.history?.initialFen;
+    const standard=initial==='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const ply=Array.isArray(moves)&&standard?moves.length:null;
+    return `https://lichess.org/${id}/${p.sideToMove==='black'?'black':'white'}${ply===null?'':`#${ply}`}`;
+  } catch {return null;}
+}
