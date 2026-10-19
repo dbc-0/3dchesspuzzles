@@ -47,7 +47,7 @@
                  build until every tab closes.
    ========================================================================== */
 
-const VERSION = 'v9-positional-strict50';
+const VERSION = 'v10-positional-one-tap-review-2';
 const SHELL_CACHE = `tt-shell-${VERSION}`;
 const DATA_CACHE = 'tt-data';           // deliberately unversioned: bands are immutable
 const KEEP = new Set([SHELL_CACHE, DATA_CACHE]);
@@ -89,6 +89,8 @@ const PRECACHE = [
   './js/modes/positional.js',
   './js/positional-core.js',
   './js/positional-engine.js',
+  './js/positional-review.js',
+  './data/positional/win-estimates.js',
   './data/positional/catalog.js',
 
   // Small and needed at boot. The BANDS it points at are NOT precached.

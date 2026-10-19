@@ -1,5 +1,7 @@
 import catalog from '../../data/positional/catalog.js';
 import * as E from '../positional-engine.js';
+import estimates from '../../data/positional/win-estimates.js';
+import {winComparison} from '../positional-review.js';
 import {LETTERS,COLORS,formatTime,lineFrames,sourceRatingText,selectionEvidenceText} from '../positional-core.js';
 
 export const meta={id:'positional',title:'Positional',boardOptions:{board:'2d'}};
@@ -22,11 +24,11 @@ export function createSetup(root,{persistence,go,board='2d',confirm,notify}) {
   const value=name=>(root.querySelector(`[name=${name}]:checked`)||root.querySelector(`[name=${name}]`)).value;
   root.innerHTML=`<header class="app-bar"><button class="icon-btn" data-home aria-label="Home">${icon('i-back')}</button><div class="app-bar__title">Positional</div><span></span></header>
     <div class="screen-body u-scroll"><div class="screen-body__inner pos-setup">
-      <div class="hero"><h1 class="hero__title">Positional</h1><p class="hero__subtitle">Find the inferior quiet move. Explore the explanation after your run.</p><p class="pos-small">${catalog.cases.length} positions · difficulty provisional</p></div>
+      <div class="hero"><h1 class="hero__title">Positional</h1><p class="hero__subtitle">Which move is the mistake? Tap it once. Learn why after your run.</p><p class="pos-small">${catalog.cases.length} positions · difficulty provisional</p></div>
       ${error?`<p role="alert">Saved training could not be read: ${esc(error)}. Original data was kept.</p>`:''}
       ${saved?.active?`<section class="section pos-saved"><span class="section__title">Saved run</span><button class="btn btn--block" data-resume>Resume ${esc(label(saved.active.config.variant))} · ${saved.active.attempts.length} answered</button>${saved.active.config.board==='3d'?'<button class="btn btn--block" data-recover>Continue saved run in 2D · keep progress</button>':''}</section>`:''}
       <section class="section"><span class="section__title">How do you want to play?</span><div class="mode-list" role="radiogroup" aria-label="Mode">${variants.map(([v,style,glyph,title,desc,meta])=>`<label class="mode-card mode-card--${style}"><input class="u-visually-hidden" type="radio" name="variant" value="${v}" ${v==='timed'?'checked':''}><span class="mode-card__icon">${icon(glyph)}</span><span class="mode-card__body"><span class="mode-card__title">${title}</span><span class="mode-card__desc">${desc}</span><span class="mode-card__meta">${meta}</span></span><span class="mode-card__chevron">${icon('i-chevron')}</span></label>`).join('')}</div></section>
-      <section class="section" data-choice-label><span class="section__title">Move choices</span>${segmented('choices',[['3','3 moves'],['2','2 moves']],'3')}<small class="pos-small">One inferior move, plus one or two sound alternatives.</small></section>
+      <section class="section" data-choice-label><span class="section__title">Move choices</span>${segmented('choices',[['3','3 moves'],['2','2 moves']],'3')}<small class="pos-small">One mistake. The other moves are good choices.</small></section>
       <section class="section" data-theme-label><label class="pos-field"><span class="section__title">Theme</span><select name="theme">${themeOptions()}</select></label><small class="pos-small" data-theme-tags></small></section>
       <section class="section" data-size-label><label class="pos-field"><span class="section__title">Fixed set</span><select name="size"><option value="0">Starter set · ${catalog.cases.length} positions</option><option value="100" ${catalog.cases.length<100?'disabled':''}>100 unique positions${catalog.cases.length<100?' · not ready yet':''}</option></select></label></section>
       <section class="section"><span class="section__title">Board</span>${segmented('board',[['2d','2D'],['3d','3D']],board==='3d'?'3d':'2d')}</section>
@@ -83,6 +85,7 @@ export function createMode(ctx) {
     run=E.newRun(catalog,{variant:ctx.config.variant,choiceCount:ctx.config.choices,theme:['timed','survival'].includes(ctx.config.variant)?'all':ctx.config.theme,size:ctx.config.size,board:ctx.settings.board});
   }
   if(ctx.config.recover2d&&run.status!=='complete')run=E.recoverIn2D(run);
+  if(run.status!=='complete')run=E.useSingleTap(run);
   E.validateRun(run,data);
   board.setInteractive?.(false);
   function persist(){
@@ -112,7 +115,8 @@ export function createMode(ctx) {
   }
   function render(){
     if(stopped)return;
-    const complete=run.status==='complete',item=run.deck[run.index],p=!complete&&data.cases.find(p=>p.id===item.id);
+    const openDetails=[...(root.querySelectorAll?.('details[data-detail][open]')||[])].map(el=>el.dataset.detail);
+    const complete=run.status==='complete',showingFeedback=run.status==='paused'&&run.reason==='feedback',item=showingFeedback?run.attempts.at(-1):run.deck[run.index],p=!complete&&data.cases.find(p=>p.id===item.id);
     const rush=['timed','survival'].includes(run.config.variant);
     const modeText=`${label(run.config.variant)} · ${run.config.choiceCount} choices${run.config.variant==='fixed'?` · cycle ${run.cycleNumber}`:''}`;
     const header=`<header class="app-bar"><div class="readouts pos-readouts" data-shell="header" aria-label="Positional progress">
@@ -123,10 +127,10 @@ export function createMode(ctx) {
     root.classList.toggle('screen--play',!complete);
     root.classList.toggle('screen--positional-review',complete);
     root.innerHTML=header+(complete?`<div class="pos-content u-scroll"><div class="pos-top"><strong>${esc(modeText)}</strong></div><div class="pos-board"></div><section class="pos-controls"></section>${storageError?`<p role="alert" class="pos-small">${esc(storageError)} Keep this tab open to review the in-memory result.</p>`:''}</div>`:
-      `<div class="stage pos-stage"><div class="pos-prompt"><span class="pos-mode-label">${esc(modeText)}${run.config.theme!=='all'?` · ${esc([...(data.practiceThemes||[]),...(data.themes||[])].find(t=>t.id===run.config.theme)?.label||run.config.theme)}`:''}</span><div class="prompt"><span class="prompt__side" data-side="${p.sideToMove}"></span><span>${p.sideToMove==='black'?'Black':'White'} to move · find the inferior move</span>${run.config.variant==='fixed'?`<strong class="pos-progress">${run.index+1}/${run.deck.length}</strong>`:''}</div></div><div class="board-area pos-board-area"><div class="board-frame pos-board"><div class="board-slot"></div></div></div><div class="pos-pause" hidden></div></div><div class="action-bar pos-action-bar"><div class="action-bar__inner"><section class="pos-controls"></section>${storageError?`<p role="alert" class="pos-small">${esc(storageError)} Keep this tab open to review the in-memory result.</p>`:''}</div></div>`);
+      `<div class="stage pos-stage"><div class="pos-prompt"><span class="pos-mode-label">${esc(modeText)}${run.config.theme!=='all'?` · ${esc([...(data.practiceThemes||[]),...(data.themes||[])].find(t=>t.id===run.config.theme)?.label||run.config.theme)}`:''}</span><div class="prompt"><span class="prompt__side" data-side="${p.sideToMove}"></span><span>${p.sideToMove==='black'?'Black':'White'} to move</span>${run.config.variant==='fixed'?`<strong class="pos-progress">${showingFeedback?run.index:run.index+1}/${run.deck.length}</strong>`:''}</div><h2 class="pos-question">Which move is the mistake?</h2></div><div class="board-area pos-board-area"><div class="board-frame pos-board"><div class="board-slot"></div></div></div><div class="pos-pause" hidden></div></div><div class="action-bar pos-action-bar"><div class="action-bar__inner"><section class="pos-controls"></section>${storageError?`<p role="alert" class="pos-small">${esc(storageError)} Keep this tab open to review the in-memory result.</p>`:''}</div></div>`);
     root.querySelector(complete?'.pos-board':'.board-slot').appendChild(boardEl);
     const controls=root.querySelector('.pos-controls');
-    if(complete){renderReview(controls);return;}
+    if(complete){renderReview(controls);for(const key of openDetails){const node=root.querySelector(`[data-detail=${key}]`);if(node)node.open=true;}return;}
     boardAt(p,item.options);
     const paused=run.status==='paused'&&run.reason!=='feedback';
     root.querySelector('.pos-board-area').hidden=paused;
@@ -135,9 +139,8 @@ export function createMode(ctx) {
       root.querySelector('.pos-pause').innerHTML=`${icon(run.reason==='ready'?'i-puzzle':'i-timer')}<h2>${run.reason==='ready'?'Ready when you are':'Paused'}</h2><p>${run.reason==='ready'?'The clock starts when you begin.':'Your progress is saved on this device.'}</p>`;
       controls.innerHTML=`<div class="pos-pause-actions"><button class="btn btn--primary btn--lg btn--block" data-action="resume" ${storageError?'disabled':''}>${run.reason==='ready'?'Begin':'Resume'}</button><button class="btn" data-action="end">End and review</button>${run.reason!=='ready'?'<a class="btn" href="#/positional">Save &amp; return to modes</a>':''}</div>`;
     }else{
-      controls.innerHTML=`<div class="pos-choices" style="--choices:${item.options.length}">${item.options.map((uci,i)=>`<button class="answer pos-choice ${selected===uci?'is-selected':''}" data-choice="${uci}" aria-pressed="${selected===uci}" ${run.status!=='playing'?'disabled':''} style="--choice:${COLORS[i]}"><strong>${LETTERS[i]}</strong><span>${esc(p.options.find(o=>o.uci===uci).san)}</span></button>`).join('')}</div>
-      <button class="btn btn--primary btn--block pos-submit" data-action="submit" ${!selected||run.status!=='playing'?'disabled':''}>Submit choice</button>
-      <p class="pos-feedback" role="status">${esc(feedback||'Tap a move to preview, then submit.')}</p>
+      controls.innerHTML=`<p class="pos-answer-instruction" id="pos-answer-instruction">Tap the mistake</p><div class="pos-choices" role="group" aria-describedby="pos-answer-instruction" style="--choices:${item.options.length}">${item.options.map((uci,i)=>`<button class="answer pos-choice" data-choice="${uci}" aria-label="${LETTERS[i]}: ${esc(p.options.find(o=>o.uci===uci).san)}. Choose as the mistake" ${run.status!=='playing'?'disabled':''} style="--choice:${COLORS[i]}"><strong>${LETTERS[i]}</strong><span>${esc(p.options.find(o=>o.uci===uci).san)}</span></button>`).join('')}</div>
+      <p class="pos-feedback" role="status">${esc(feedback||'One tap answers · or press '+LETTERS.slice(0,item.options.length).join(', '))}</p>
       <div class="pos-actions pos-play-actions"><button class="btn" data-action="pause">Pause &amp; save</button><button class="btn" data-action="end">End and review</button></div>`;
     }
     requestAnimationFrame(()=>{if(!stopped)board.resize();});
@@ -146,7 +149,7 @@ export function createMode(ctx) {
     const filtered=run.attempts.map((a,i)=>({a,i})).filter(({a})=>filter!=='misses'||!a.correct);
     if(!filtered.some(x=>x.i===reviewIndex))reviewIndex=filtered[0]?.i??0;
     const a=run.attempts[reviewIndex],p=a&&data.cases.find(p=>p.id===a.id);
-    el.innerHTML=`<h2>Run review · ${run.attempts.length?Math.round(run.score/run.attempts.length*100):0}%</h2><p>${duration(run.activeMs)} active time · ${esc(run.version)} · ${run.config.choiceCount} choices</p>
+    el.innerHTML=`<h2>Run review · ${run.attempts.length?Math.round(run.score/run.attempts.length*100):0}%</h2><p class="pos-small">${run.score} of ${run.attempts.length} correct · ${duration(run.activeMs)} playing · ${run.config.choiceCount} choices</p>
       ${run.boardRecovery?`<p class="pos-small">Recovered from 3D to 2D after ${run.boardRecovery.afterAttempts} answers. This run is kept separate from unchanged-board comparisons.</p>`:''}
       <div class="pos-actions"><button class="btn" data-filter="all" aria-pressed="${filter==='all'}">All (${run.attempts.length})</button><button class="btn" data-filter="misses" aria-pressed="${filter==='misses'}">Misses (${run.mistakes})</button></div>
       <div class="pos-review-tabs">${filtered.map(({a,i})=>`<button class="btn" data-review="${i}" aria-pressed="${i===reviewIndex}">${i+1} ${a.correct?'✓':'×'}</button>`).join('')}</div>
@@ -158,17 +161,33 @@ export function createMode(ctx) {
     root.querySelector('.pos-board').hidden=false;
     const bad=p.options.find(o=>o.isBad),chosen=p.options.find(o=>o.uci===a.selectedUci);
     const body=el.querySelector('.pos-review-body');
-    body.innerHTML=`<p><strong>${a.correct?'Correct':'Missed'}</strong> · ${duration(a.answerMs)} · you chose ${esc(chosen.san)}; inferior move: ${esc(bad.san)}</p>
+    body.innerHTML=`<div class="pos-result"><strong>${a.correct?'✓ Correct':'Missed this one'}</strong><span>${duration(a.answerMs)}</span></div><div class="pos-review-moves"><div><span>You chose</span><strong>${esc(chosen.san)}</strong></div><div><span>The mistake</span><strong>${esc(bad.san)}</strong></div></div>
+      <div class="pos-review-board-slot"></div>
+      <p class="pos-reason">${esc(p.explanation?.text||'')}</p>
+      <div class="pos-tags" aria-label="Themes">${(p.themeIds||[]).map(t=>`<span>${esc(data.themes?.find(x=>x.id===t)?.label||t)}</span>`).join('')}</div>
+      <div class="pos-win-estimates" data-win-estimates></div>
+      <details class="pos-details" data-detail="explanation"><summary>Why it matters &amp; the good moves</summary>
       <p><strong>${esc(p.difficulty?.label||'Provisional difficulty')}</strong>${p.difficulty?.provisional&&!/provisional/i.test(p.difficulty.label||'')?' · provisional':''}</p>
-      <p class="pos-small">Practice tags: ${(p.themeIds||[]).map(t=>esc(data.themes?.find(x=>x.id===t)?.label||t)).join(' · ')}</p>
-      <p>${esc(p.explanation?.text||'')}</p>
+
       ${(p.explanation?.tags||[]).map(t=>`<section><h3>${esc(t.tag)}</h3><p>${esc(t.before)}</p><p>${esc(t.after)}</p><p>${esc(t.commentary)}</p></section>`).join('')}
       <h3>Why the other moves are okay</h3>${p.options.filter(o=>!o.isBad&&a.options.includes(o.uci)).map(o=>`<p><strong>${esc(o.san)}</strong>: ${esc(p.explanation?.alternatives?.[o.uci]||'See source checks below.')}</p>`).join('')}
-      <div class="pos-line"><label>Line<select data-line-type><option value="illustrative">${p.illustrative?.sourceType==='engine'?'Stockfish illustration':'Maia illustration'}</option><option value="benchmark">Stockfish diagnostic</option></select></label><p data-line-note></p><div class="pos-actions"><button class="btn" data-action="root">Position</button><button class="btn" data-action="line-prev">Previous</button><button class="btn" data-action="line-next">Next</button><span data-line-counter></span></div></div>
-      <details><summary>Source and control checks</summary><p>${esc(sourceRatingText(p.source))}</p><p>${esc(p.source?.verification||p.source?.note||'')}</p><p>Evidence version: ${esc(p.validation?.historicalSourceVersion||data.version)}. ${esc(p.validation?.projectionNote||'')}</p>${p.source?.url&&/^https:\/\/lichess\.org\//.test(p.source.url)?`<p><a href="${esc(p.source.url)}" target="_blank" rel="noopener noreferrer">Original game</a></p>`:''}<p>${esc(p.validation?.notes?.join?.(' ')||p.validation?.notes||'')}</p>${p.options.map(o=>`<p><strong>${esc(o.san)}</strong> ${esc(selectionEvidenceText({...o.selectionEvidence,stockfishCpMover:o.selectionEvidence?.stockfishCpMover??o.validation?.stockfishCpMover})||`Stockfish: ${o.validation?.stockfishCpMover??'not recorded'} cp, moving side.`)} ${o.validation?.stockfishNodeBudget?`Recorded node budget: ${o.validation.stockfishNodeBudget.toLocaleString()}.`:''}</p>`).join('')}<p>Binary mode uses the highest recorded engine score among the two approved controls; measured Maia probability and UCI break ties. Legacy cards retain their original evidence and are not relabeled as passing the newer strict protocol. Source player ratings are not puzzle difficulty.</p></details>`;
+      </details><details class="pos-details" data-detail="continuation"><summary>See a possible continuation</summary><div class="pos-line"><label>Line<select data-line-type><option value="illustrative">Example continuation</option><option value="benchmark">Longer engine line</option></select></label><p data-line-note></p><div class="pos-actions"><button class="btn" data-action="root">Position</button><button class="btn" data-action="line-prev">Previous</button><button class="btn" data-action="line-next">Next</button><span data-line-counter></span></div></div></details>
+      <details data-detail="sources"><summary>Sources &amp; analysis details</summary><p>${esc(estimates.disclaimer||'')}</p><p>Set: ${esc(run.version)}. Answering: ${run.answerStyle==='mixed'?'changed from preview-and-submit to one tap during this run':run.answerStyle==='single-tap'?'one tap':'preview and submit'}. Times are active wall-clock time, not pure thinking time.</p><p>${esc(sourceRatingText(p.source))}</p><p>${esc(p.source?.verification||p.source?.note||'')}</p><p>Evidence version: ${esc(p.validation?.historicalSourceVersion||data.version)}. ${esc(p.validation?.projectionNote||'')}</p>${p.source?.url&&/^https:\/\/lichess\.org\//.test(p.source.url)?`<p><a href="${esc(p.source.url)}" target="_blank" rel="noopener noreferrer">Original game</a></p>`:''}<p>${esc(p.validation?.notes?.join?.(' ')||p.validation?.notes||'')}</p>${p.options.map(o=>`<p><strong>${esc(o.san)}</strong> ${esc(selectionEvidenceText({...o.selectionEvidence,stockfishCpMover:o.selectionEvidence?.stockfishCpMover??o.validation?.stockfishCpMover})||`Stockfish: ${o.validation?.stockfishCpMover??'not recorded'} cp, moving side.`)} ${o.validation?.stockfishNodeBudget?`Recorded node budget: ${o.validation.stockfishNodeBudget.toLocaleString()}.`:''}</p>`).join('')}<p>Binary mode uses the highest recorded engine score among the two approved controls; measured Maia probability and UCI break ties. Legacy cards retain their original evidence and are not relabeled as passing the newer strict protocol. Source player ratings are not puzzle difficulty.</p></details>`;
+    showWinEstimates(p,body.querySelector('[data-win-estimates]'));
+    body.querySelector('.pos-review-board-slot').appendChild(root.querySelector('.pos-board'));
     body.querySelector('[data-line-type]').value=lineType;
     showLine(p,a);
     requestAnimationFrame(()=>{if(!stopped)board.resize();});
+  }
+  async function showWinEstimates(p,node){
+    const result=await winComparison(p,estimates,E.binaryControl(p).uci);
+    if(stopped||!node.isConnected)return;
+    if(!result){node.innerHTML='<p class="pos-small">Win-chance estimates are unavailable for this position.</p>';return;}
+    const good=p.options.find(o=>o.uci===result.referenceGoodUci),bad=p.options.find(o=>o.uci===result.badUci);
+    const percent=n=>(100*n).toFixed(1)+'%';
+    node.innerHTML=`<h3>Estimated win chance</h3><p class="pos-small">${p.sideToMove==='black'?'Black':'White'}’s chances after <strong>${esc(good.san)}</strong> (good move) → <strong>${esc(bad.san)}</strong> (mistake)</p>
+      <div class="pos-win-rows">${result.rows.map(r=>`<div class="pos-win-row"><strong>${r.rating} players</strong>${r.unavailable?'<span>Unavailable</span>':`<span>${percent(r.good)} → ${percent(r.mistake)}</span><span class="pos-win-change">${r.change>0?'+':r.change<0?'−':''}${Math.abs(r.change).toFixed(1)} pts</span>${r.disagrees?'<small>Model estimate disagrees with the engine here.</small>':''}`}</div>`).join('')}</div>
+      <p class="pos-small">Maia human-model estimates, not measured odds. Both players are set to the shown rating.</p>`;
   }
   function showLine(p,a){
     const line=p[lineType];
@@ -179,24 +198,24 @@ export function createMode(ctx) {
     root.querySelector('[data-line-note]').textContent=`${line?.model||line?.engine||'Stockfish'}${line?.selfRating?` (${line.selfRating}/${line.opponentRating} conditioned)`:''}. ${line?.note||''} ${(line?.lineSan||[]).join(' ')}`;
     root.querySelector('[data-line-counter]').textContent=lineIndex<0?'Starting position':`${lineIndex}/${frames.length-1} plies after ${line?.startsAfterUci?p.options.find(o=>o.uci===line.startsAfterUci)?.san||'candidate':'line start'}`;
   }
-  function submit(){
-    if(!selected||run.status!=='playing'||storageError)return;
+  function submit(uci){
+    if(!uci||run.status!=='playing'||storageError||stopped)return;
+    selected=uci;
     run=E.answer(run,data,selected);selected=null;
     feedback=run.attempts.at(-1)?.correct?'Correct':'Incorrect';persist();complete();render();
     if(run.status==='paused'&&run.reason==='feedback')feedbackTimer=setTimeout(()=>{
       feedbackTimer=0;if(stopped||storageError||run.reason!=='feedback')return;
       run=E.resume(run);feedback='';persist();render();
-    },450);
+    },700);
   }
   function click(e){
     const choice=e.target.closest('[data-choice]');
-    if(choice&&run.status==='playing'){selected=choice.dataset.choice;render();return;}
+    if(choice){if(e.detail>1)return;submit(choice.dataset.choice);return;}
     const tab=e.target.closest('[data-review]');if(tab){reviewIndex=Number(tab.dataset.review);lineIndex=-1;render();return;}
     const f=e.target.closest('[data-filter]');if(f){filter=f.dataset.filter;lineIndex=-1;render();return;}
     switch(e.target.closest('[data-action]')?.dataset.action){
       case 'resume':run=E.resume(run);feedback='';persist();render();break;
       case 'pause':stop();break;
-      case 'submit':submit();break;
       case 'end':finish('ended');break;
       case 'repeat':
         if(store.active){storageError='Another run is saved. Resume it from Modes first.';render();break;}
@@ -207,10 +226,11 @@ export function createMode(ctx) {
     }
   }
   function key(e){
-    if(e.target.closest?.('input,select,textarea')||e.target.isContentEditable)return;
+    if(e.repeat){if(e.target.closest?.('[data-choice]'))e.preventDefault();return;}
+    if(e.ctrlKey||e.metaKey||e.altKey||e.target.closest?.('input,select,textarea')||e.target.isContentEditable)return;
     const i=LETTERS.indexOf(e.key.toUpperCase());
-    if(run.status==='playing'&&i>=0&&i<run.config.choiceCount){selected=run.deck[run.index].options[i];render();e.preventDefault();}
-    if(e.key==='Enter'&&run.status==='playing'&&(!e.target.closest?.('button,a')||e.target.matches?.('[data-choice]'))){submit();e.preventDefault();}
+    if(run.status==='playing'&&i>=0&&i<run.config.choiceCount){e.preventDefault();submit(run.deck[run.index].options[i]);}
+    // Enter/Space on a focused answer button use its native click, once.
   }
   root.addEventListener('click',click);
   const change=e=>{if(e.target.matches('[data-line-type]')){lineType=e.target.value;lineIndex=0;render();}};

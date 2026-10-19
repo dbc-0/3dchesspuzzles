@@ -8,6 +8,14 @@ The Positional card sits directly below Blunder Rush in the new `app/` shell.
 - Four broad filters are unions of independently approved finer tags. Counts are unique positions, so overlapping categories do not inflate the corpus count. Finer tags and detailed commentary appear in end review.
 - Fixed100 stays disabled until the selected pool actually has 100 unique approved positions. The current catalog has 50, not 100 or 200.
 
+## Answering and review
+
+Both two- and three-choice games ask “Which move is the mistake?” A single tap on a lettered move, or one A/B/C keypress, commits the answer. There is no preview/submit step. Buttons lock through 700 ms of feedback, double-click second events and held letter keys are ignored, and the answered board stays visible until the next question.
+
+End review leads with your choice and the mistake, then the board, the exact approved explanation and theme chips. Detailed lessons, example playback and technical sources expand on demand. A separate approved Maia3-79M overlay shows outright win-probability estimates for both players at 1500 and at 2600, comparing the same engine-selected good move with the mistake. These are model estimates, not measured odds. Positive mistake deltas are retained and labeled as model disagreements. Exact position, option and complete-history hashes must match; unavailable or mismatched estimates stay unavailable. No expected scores or other ratings are substituted.
+
+Old completed reviews and attempts are unchanged. New runs record the one-tap interface; a resumed preview/submit run with previous answers is marked mixed. Their time-comparison keys stay separate. A fresh repeat cycle uses one tap.
+
 ## Content
 
 `data/positional/catalog.js` embeds the exact independently approved 50-card public projection, then adds approved practice metadata. `manifest.json` records the input hashes and the checked binary control for each card. The data test verifies the projection hash, unchanged case values, and the selected controls.
@@ -38,6 +46,9 @@ node app/test/positional-engine.test.mjs
 node app/test/positional-board-adapters.test.mjs
 node app/test/positional-startup.test.mjs
 node app/test/positional-recovery.test.mjs
+node app/test/positional-interface.test.mjs
+node app/test/positional-one-tap.test.mjs
+node app/test/positional-review.test.mjs
 ```
 
 No package installation or build is required. Serve the repository root, then open `app/`.

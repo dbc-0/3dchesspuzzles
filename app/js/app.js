@@ -447,7 +447,7 @@ function renderHome() {
             <button class="mode-card mode-card--classic" data-go="#/positional">
               <span class="mode-card__icon">${icon('i-puzzle')}</span>
               <span class="mode-card__body"><span class="mode-card__title">Positional</span>
-              <span class="mode-card__desc">Find the inferior quiet move</span>
+              <span class="mode-card__desc">Tap the move that is a mistake</span>
               <span class="mode-card__meta">Rush · Fixed cycles · Themes</span></span>
               <span class="mode-card__chevron">${icon('i-chevron')}</span>
             </button>
