@@ -34,3 +34,4 @@ jobs:
       - run: node app/test/positional-one-tap.test.mjs
       - run: node app/test/positional-review.test.mjs
       - run: node --check app/js/app.js && node --check app/js/modes/positional.js && node --check app/sw.js
+      - run: node app/test/positional-midrun-review.test.mjs

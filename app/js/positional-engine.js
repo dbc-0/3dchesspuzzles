@@ -203,3 +203,13 @@ export function endSavedRun(store, now=Date.now()) {
   const restored={...store.active,status:"paused",runningSince:null,reason:"restored"};
   return saveRun(store,finish(restored,"ended",now),store.corpora[restored.version]);
 }
+
+// Review only completed attempts; never finish or advance an active run.
+export function canReviewLast(run) {
+  return run.status !== 'complete' && run.config.variant !== 'timed' && run.attempts.length > 0;
+}
+export function reviewLast(run, now = Date.now()) {
+  if (!canReviewLast(run)) return run;
+  const paused = pause(run, now, 'review-last');
+  return {...paused, reason:'review-last'};
+}
