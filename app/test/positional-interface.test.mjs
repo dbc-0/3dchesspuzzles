@@ -21,7 +21,7 @@ for(const choiceCount of [2,3]){
   assert(v.root.innerHTML.includes('class="action-bar pos-action-bar"'));
   assert(v.root.innerHTML.includes('class="readouts pos-readouts"'));
   assert.equal((controls.match(/data-choice=/g)||[]).length,choiceCount);
-  assert(controls.includes('Submit choice'));assert(controls.includes('disabled'));
+  assert(!controls.includes('Submit choice'));assert(controls.includes('Tap the mistake'));assert(!controls.includes('disabled'));assert(v.root.innerHTML.includes('Which move is the mistake?'));
   assert(!v.root.innerHTML.includes(catalog.cases[0].explanation.text));
   assert(!v.root.innerHTML.includes('Source and control checks'));
   assert(v.classes.has('screen--play'));assert(!v.classes.has('screen--positional-review'));
@@ -48,3 +48,8 @@ const css=fs.readFileSync(new URL('../css/app.css',import.meta.url),'utf8');
 assert.match(css,/@media \(max-width:360px\)[\s\S]*grid-template-columns:var\(--tap-min\) var\(--tap-min\) minmax\(0,1fr\) var\(--tap-min\)/);
 assert.match(css,/screen--positional > \.pos-action-bar \{ overflow:auto; align-content:start/);
 console.log('Small-header space and top-aligned short-landscape action guards present');
+
+assert(source.indexOf('<div class="pos-review-board-slot"')<source.indexOf('<p class="pos-reason"'));
+assert(source.indexOf('<p class="pos-reason"')<source.indexOf('<div class="pos-win-estimates"'));
+assert(source.includes('!node.isConnected'));
+console.log('Review keeps the board before the lesson, stats after it, and guards stale async updates');

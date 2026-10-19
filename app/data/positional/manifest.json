@@ -2545,5 +2545,16 @@
       }
     ],
     "note": "These four unpublished candidate sets were held by the same two-control consistency check. A failed finite-search gate does not by itself prove an option unsound."
+  },
+  "reviewWinEstimates": {
+    "version": "maia79m-winprob-strict50-20261019-v1",
+    "publicOverlaySha256": "1a225fe2b12e078b13747261e3ee4572d3e2147d778c3813ee3611046aed3af9",
+    "metric": "outright_win_probability",
+    "ratings": [
+      1500,
+      2600
+    ],
+    "comparisons": 100,
+    "positionBinding": "SHA256 of canonical root/options/history with fixed approved control; checked at review time"
   }
 }

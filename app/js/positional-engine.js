@@ -30,7 +30,7 @@ export function eligibleCases(catalog, theme = 'all') {
   return catalog.cases.filter(p => theme === 'all' || (p.themeIds || []).includes(theme) || group?.tags.some(t=>(p.themeIds||[]).includes(t)));
 }
 export function comparisonKey(run) {
-  return [run.version, run.config.variant, run.config.theme, run.config.choiceCount, run.config.size, run.config.board, ...(run.boardRecovery?['recovered-3d-to-2d']:[])].join(':');
+  return [run.version, run.config.variant, run.config.theme, run.config.choiceCount, run.config.size, run.config.board, ...(run.answerStyle?[run.answerStyle]:[]), ...(run.boardRecovery?['recovered-3d-to-2d']:[])].join(':');
 }
 function makeDeck(catalog, config, seed, previous = null) {
   const rng = seededRandom(seed);
@@ -58,7 +58,7 @@ export function newRun(catalog, config = {}, {seed = Date.now()>>>0, now = Date.
   const rush = ['timed','survival'].includes(config.variant);
   config = {variant:config.variant, choiceCount:rush ? 2 : config.choiceCount === 2 ? 2 : 3,
     theme:config.theme || 'all', size:config.size === 100 ? 100 : 0, board:config.board === '3d' ? '3d' : '2d'};
-  return {schema:1, version:catalog.version, config, seed:seed>>>0, cycleNumber,
+  return {schema:1, version:catalog.version, config, seed:seed>>>0, cycleNumber, answerStyle:'single-tap',
     status:'paused', reason:'ready', startedAt:now, endedAt:null, runningSince:null,
     activeMs:0, questionMs:0, score:0, mistakes:0, index:0, round:0,
     deck:makeDeck(catalog,config,seed,previous), attempts:[]};
@@ -76,6 +76,10 @@ export function pause(run, now = Date.now(), reason = 'manual') {
 export function resume(run, now = Date.now()) {
   if (run.status !== 'paused') return run;
   return {...run,status:'playing',runningSince:now,reason:null};
+}
+export function useSingleTap(run) {
+  if(run.status==='complete'||run.answerStyle)return run;
+  return {...run,answerStyle:run.attempts.length?'mixed':'single-tap',...(run.attempts.length?{singleTapAfterAttempts:run.attempts.length}:{})};
 }
 export function recoverIn2D(run, now = Date.now()) {
   assert(run.status!=='complete','completed reviews keep their recorded board');
@@ -120,6 +124,8 @@ export function validateRun(run,catalog) {
   assert(run && run.schema===1 && run.version===catalog.version,'saved version mismatch');
   assert(VARIANTS.includes(run.config?.variant) && [2,3].includes(run.config.choiceCount),'invalid saved mode');
   assert(['2d','3d'].includes(run.config.board) && [0,100].includes(run.config.size),'invalid saved configuration');
+  assert(run.answerStyle===undefined||['single-tap','mixed'].includes(run.answerStyle),'invalid answer style');
+  if(run.answerStyle==='mixed')assert(Number.isInteger(run.singleTapAfterAttempts)&&run.singleTapAfterAttempts>0&&run.singleTapAfterAttempts<=run.attempts.length,'invalid answer style transition');
   if(run.boardRecovery){const b=run.boardRecovery;assert(b.from==='3d'&&b.to==='2d'&&run.config.board==='2d'&&finite(b.at)&&Number.isInteger(b.afterAttempts)&&b.afterAttempts>=0&&b.afterAttempts<=run.attempts.length,'invalid board recovery');}
   if(['timed','survival'].includes(run.config.variant))assert(run.config.choiceCount===2 && run.config.theme==='all','invalid rush choices');
   assert(['playing','paused','complete'].includes(run.status),'invalid saved status');
